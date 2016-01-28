@@ -1,0 +1,15 @@
+convert move_U-2.bmp move_U-2.png
+convert move_U-1.bmp move_U-1.png
+convert move_U0.bmp move_U0.png
+convert move_U1.bmp move_U1.png
+convert move_U2.bmp move_U2.png
+convert move_R-2.bmp move_R-2.png
+convert move_R-1.bmp move_R-1.png
+convert move_R0.bmp move_R0.png
+convert move_R1.bmp move_R1.png
+convert move_R2.bmp move_R2.png
+convert move_F-2.bmp move_F-2.png
+convert move_F-1.bmp move_F-1.png
+convert move_F0.bmp move_F0.png
+convert move_F1.bmp move_F1.png
+convert move_F2.bmp move_F2.png

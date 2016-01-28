@@ -1,0 +1,11 @@
+*.class
+*.dep
+*.exe
+*.o
+*.zip
+.classpath
+.cproject
+.project
+bin/
+build/
+movetables

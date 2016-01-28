@@ -1,0 +1,20 @@
+add_executable(SimpleSolver
+	common.h
+	CoordCube.cpp
+	CoordCube.h
+	#CubeSolverCpp.cpp
+	CubieCube.cpp
+	CubieCube.h
+	FaceCube.cpp
+	FaceCube.h
+	#GraphicalCube.cpp
+	#GraphicalCube.h
+	MoveTable.cpp
+	MoveTable.h
+	Search.cpp
+	Search.h
+	Sequence.h
+	SimpleSolver.cpp
+	Tools.cpp
+	Tools.h
+)
