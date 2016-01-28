@@ -120,7 +120,7 @@ int main() {
 	std::vector<Label> labels = createlabels(im_out, composite, 80);
 	composite.threshold(80);
 
-	printf("labels.size(): %d\n", labels.size());
+	printf("labels.size(): %lu\n", labels.size());
 	fflush(stdout);
 
 	int image_id = 0;
