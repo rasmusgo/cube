@@ -8,7 +8,8 @@ include_directories(
 	"${PROJECT_SOURCE_DIR}/thirdparty"
 )
 
+add_subdirectory(src/CubeMoveIcons)
+add_subdirectory(src/CubeRecognition)
 add_subdirectory(src/GraphicalCube)
 add_subdirectory(src/SimpleSolver)
 add_subdirectory(src/SolverLib)
-add_subdirectory(src/CubeMoveIcons)
