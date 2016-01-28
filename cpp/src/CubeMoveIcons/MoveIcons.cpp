@@ -8,7 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "CImg.h"
+#include <CImg.h>
+
 using namespace cimg_library;
 
 void bend(float &x, float &y, int size) {
