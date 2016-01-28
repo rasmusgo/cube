@@ -1,19 +1,11 @@
-/*
- * SimpleSolver.cpp
- *
- *  Created on: 2011-aug-25
- *      Author: morotspaj
- */
-
 #include <stdio.h>
 #include <string>
 
-#include "FaceCube.h"
-#include "CubieCube.h"
-#include "CoordCube.h"
-#include "Search.h"
-#include "Tools.h"
-#include "Sequence.h"
+#include <SolverLib/FaceCube.h>
+#include <SolverLib/CubieCube.h>
+#include <SolverLib/CoordCube.h>
+#include <SolverLib/Search.h>
+#include <SolverLib/Tools.h>
 
 int main( int argc, const char* argv[] ) {
 	if (argc != 2) {

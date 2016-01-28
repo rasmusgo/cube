@@ -1,19 +1,11 @@
-/*
- * Sequence.h
- *
- *  Created on: 2011-aug-11
- *      Author: morotspaj
- */
-
-#ifndef SEQUENCE_H_
-#define SEQUENCE_H_
-
-#include "common.h"
-#include "MoveTable.h"
+#pragma once
 
 #include <vector>
 #include <string>
 #include <sstream>
+
+#include <SolverLib/common.h>
+#include <SolverLib/MoveTable.h>
 
 class Sequence {
 public:
@@ -221,5 +213,3 @@ public:
 		return animations[i];
 	}
 };
-
-#endif /* SEQUENCE_H_ */

@@ -1,19 +1,12 @@
-/*
- * GraphicalCube.h
- *
- *  Created on: 2011-jun-23
- *      Author: morotspaj
- */
-
-#ifndef GRAPHICALCUBE_H_
-#define GRAPHICALCUBE_H_
-
-#include "MoveTable.h"
-#include "FaceCube.h"
-#include "Search.h"
-#include "Sequence.h"
+#pragma once
 
 #include <deque>
+
+#include <SolverLib/FaceCube.h>
+#include <SolverLib/MoveTable.h>
+#include <SolverLib/Search.h>
+
+#include "Sequence.h"
 
 class GraphicalCube {
 	twophase::FaceCube faceCube;
@@ -56,5 +49,3 @@ private:
 	void drawCornerPiece(float color1[3], float color2[3], float color3[3]);
 	void drawFace(float x, float y);
 };
-
-#endif /* GRAPHICALCUBE_H_ */

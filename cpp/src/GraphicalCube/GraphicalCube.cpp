@@ -1,20 +1,15 @@
-/*
- * GraphicalCube.cpp
- *
- *  Created on: 2011-jun-23
- *      Author: morotspaj
- */
-
-#include "Sequence.h"
-#include "GraphicalCube.h"
-#include "FaceCube.h"
-#include "MoveTable.h"
-#include "Tools.h"
-
-#include <gl/gl.h>
 #include <cstdio>
-#include <math.h>
 #include <sstream>
+
+#include <GL/gl.h>
+#include <math.h>
+
+#include <SolverLib/FaceCube.h>
+#include <SolverLib/MoveTable.h>
+#include <SolverLib/Tools.h>
+
+#include "GraphicalCube.h"
+#include "Sequence.h"
 
 using namespace twophase;
 
