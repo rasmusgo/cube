@@ -46,98 +46,98 @@ using namespace cimg_library;
    _p1##x = x++, ++_n1##x)
 
 int main() {
-	CImg<float> img("cube_0b.png");
-	CImg<float> gradient(img.get_channel(0));
-	CImg<float> delta(img.get_channel(0));
-	CImg<float> k33(img.get_channel(0));
-	CImg<float> intensity(img.get_channel(0));
+    CImg<float> img("cube_0b.png");
+    CImg<float> gradient(img.get_channel(0));
+    CImg<float> delta(img.get_channel(0));
+    CImg<float> k33(img.get_channel(0));
+    CImg<float> intensity(img.get_channel(0));
 
-	cimg_forC(img, c)
-		printf("c: %d\n", c);
+    cimg_forC(img, c)
+        printf("c: %d\n", c);
 
-	CImg_3x3(R, float);
-	CImg_3x3(G, float);
-	CImg_3x3(B, float);
-	cimg_for3x3rgb(img, x, y, 0, R, G, B, float) {
-		const float Dcc = max(Rcc, Gcc, Bcc) - min(Rcc, Gcc, Bcc);
-		const float Dnc = max(Rnc, Gnc, Bnc) - min(Rnc, Gnc, Bnc);
-		const float Dpc = max(Rpc, Gpc, Bpc) - min(Rpc, Gpc, Bpc);
-		const float Dcn = max(Rcn, Gcn, Bcn) - min(Rcn, Gcn, Bcn);
-		const float Dcp = max(Rcp, Gcp, Bcp) - min(Rcp, Gcp, Bcp);
-		const float Dnn = max(Rnn, Gnn, Bnn) - min(Rnn, Gnn, Bnn);
+    CImg_3x3(R, float);
+    CImg_3x3(G, float);
+    CImg_3x3(B, float);
+    cimg_for3x3rgb(img, x, y, 0, R, G, B, float) {
+        const float Dcc = max(Rcc, Gcc, Bcc) - min(Rcc, Gcc, Bcc);
+        const float Dnc = max(Rnc, Gnc, Bnc) - min(Rnc, Gnc, Bnc);
+        const float Dpc = max(Rpc, Gpc, Bpc) - min(Rpc, Gpc, Bpc);
+        const float Dcn = max(Rcn, Gcn, Bcn) - min(Rcn, Gcn, Bcn);
+        const float Dcp = max(Rcp, Gcp, Bcp) - min(Rcp, Gcp, Bcp);
+        const float Dnn = max(Rnn, Gnn, Bnn) - min(Rnn, Gnn, Bnn);
 
-		/*
-		const float rx = (Rnc-Rpc), ry = (Rcn-Rcp);
-		const float gx = (Gnc-Gpc), gy = (Gcn-Gcp);
-		const float bx = (Bnc-Bpc), by = (Bcn-Bcp);
-		const float dx = (Dnc-Dpc), dy = (Dcn-Dcp);
-		*/
+        /*
+        const float rx = (Rnc-Rpc), ry = (Rcn-Rcp);
+        const float gx = (Gnc-Gpc), gy = (Gcn-Gcp);
+        const float bx = (Bnc-Bpc), by = (Bcn-Bcp);
+        const float dx = (Dnc-Dpc), dy = (Dcn-Dcp);
+        */
 
-		const float rx = (Rnc-Rpc);
-		const float gx = (Gnc-Gpc);
-		const float bx = (Bnc-Bpc);
-		const float dx = (Dnc-Dpc);
-		const float ix = rx+gx+bx;
+        const float rx = (Rnc-Rpc);
+        const float gx = (Gnc-Gpc);
+        const float bx = (Bnc-Bpc);
+        const float dx = (Dnc-Dpc);
+        const float ix = rx+gx+bx;
 
-		const float ry = (Rcn-Rcp);
-		const float by = (Bcn-Bcp);
-		const float gy = (Gcn-Gcp);
-		const float dy = (Dcn-Dcp);
-		const float iy = ry+gy+by;
+        const float ry = (Rcn-Rcp);
+        const float by = (Bcn-Bcp);
+        const float gy = (Gcn-Gcp);
+        const float dy = (Dcn-Dcp);
+        const float iy = ry+gy+by;
 
-		const float rgx = (Rnc-Gnc) - (Rpc-Gpc);
-		const float rbx = (Rnc-Bnc) - (Rpc-Bpc);
-		const float gbx = (Gnc-Bnc) - (Gpc-Bpc);
+        const float rgx = (Rnc-Gnc) - (Rpc-Gpc);
+        const float rbx = (Rnc-Bnc) - (Rpc-Bpc);
+        const float gbx = (Gnc-Bnc) - (Gpc-Bpc);
 
-		const float rgy = (Rcn-Gcn) - (Rcp-Gcp);
-		const float rby = (Rcn-Bcn) - (Rcp-Bcp);
-		const float gby = (Gcn-Bcn) - (Gcp-Bcp);
+        const float rgy = (Rcn-Gcn) - (Rcp-Gcp);
+        const float rby = (Rcn-Bcn) - (Rcp-Bcp);
+        const float gby = (Gcn-Bcn) - (Gcp-Bcp);
 
-		gradient(x,y) = rx*rx + gx*gx + bx*bx +
-						ry*ry + gy*gy + by*by;
-		delta(x,y)    = dx*dx + dy*dy;
-		k33(x,y)      = rgx*rgx + rbx*rbx + gbx*gbx +
-						rgy*rgy + rby*rby + gby*gby;
-		intensity(x,y)= ix*ix + iy*iy;
-	}
-	CImg<> composite = gradient + 9*delta + 4*k33;
-	composite.sqrt();
-	gradient.sqrt();
-	delta.sqrt();
-	k33.sqrt();
-	intensity.sqrt();
+        gradient(x,y) = rx*rx + gx*gx + bx*bx +
+                        ry*ry + gy*gy + by*by;
+        delta(x,y)    = dx*dx + dy*dy;
+        k33(x,y)      = rgx*rgx + rbx*rbx + gbx*gbx +
+                        rgy*rgy + rby*rby + gby*gby;
+        intensity(x,y)= ix*ix + iy*iy;
+    }
+    CImg<> composite = gradient + 9*delta + 4*k33;
+    composite.sqrt();
+    gradient.sqrt();
+    delta.sqrt();
+    k33.sqrt();
+    intensity.sqrt();
 
-	CImg<DT> im_out(composite._width, composite._height);
-	im_out.fill(0);
-	std::vector<Label> labels = createlabels(im_out, composite, 80);
-	composite.threshold(80);
+    CImg<DT> im_out(composite._width, composite._height);
+    im_out.fill(0);
+    std::vector<Label> labels = createlabels(im_out, composite, 80);
+    composite.threshold(80);
 
-	printf("labels.size(): %lu\n", labels.size());
-	fflush(stdout);
+    printf("labels.size(): %lu\n", labels.size());
+    fflush(stdout);
 
-	int image_id = 0;
-	const int image_count = 7;
-	CImg<> * images[image_count] = {&img, &gradient, &intensity, &k33, &delta, &composite, &im_out};
-	const char * titles[image_count] = {"Original", "RGB Gradient", "Intensity Gradient", "k33 Gradient", "Saturation Gradient", "Composite", "Debug output"};
+    int image_id = 0;
+    const int image_count = 7;
+    CImg<> * images[image_count] = {&img, &gradient, &intensity, &k33, &delta, &composite, &im_out};
+    const char * titles[image_count] = {"Original", "RGB Gradient", "Intensity Gradient", "k33 Gradient", "Saturation Gradient", "Composite", "Debug output"};
 
-	CImgDisplay main_disp(img, "Click to change image");
+    CImgDisplay main_disp(img, "Click to change image");
 
-	while (!main_disp.is_closed() ) {
-		main_disp.wait();
-		if ((main_disp.button() & 1) && main_disp.mouse_y() >= 0) {
-			image_id = (image_id + 1) % image_count;
-			main_disp.display(*images[image_id] );
-			main_disp.set_title( titles[image_id] );
+    while (!main_disp.is_closed() ) {
+        main_disp.wait();
+        if ((main_disp.button() & 1) && main_disp.mouse_y() >= 0) {
+            image_id = (image_id + 1) % image_count;
+            main_disp.display(*images[image_id] );
+            main_disp.set_title( titles[image_id] );
 
-			main_disp.set_button();
-		}
-		if ((main_disp.button() & 2) && main_disp.mouse_y() >= 0) {
-			image_id = (image_id + image_count-1) % image_count;
-			main_disp.display(*images[image_id] );
-			main_disp.set_title( titles[image_id] );
+            main_disp.set_button();
+        }
+        if ((main_disp.button() & 2) && main_disp.mouse_y() >= 0) {
+            image_id = (image_id + image_count-1) % image_count;
+            main_disp.display(*images[image_id] );
+            main_disp.set_title( titles[image_id] );
 
-			main_disp.set_button();
-		}
-	}
-	return 0;
+            main_disp.set_button();
+        }
+    }
+    return 0;
 }

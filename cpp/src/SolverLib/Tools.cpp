@@ -33,22 +33,22 @@ namespace twophase {
  *         -6: Parity error: Two corners or two edges have to be exchanged
  */
 int Tools::verify(std::string s) {
-	int count[6];
-	try {
-		for (int i = 0; i < 54; i++)
-			++count[FaceCube::charToColor(s[i])];
-	} catch (...) {
-		return -1;
-	}
+    int count[6];
+    try {
+        for (int i = 0; i < 54; i++)
+            ++count[FaceCube::charToColor(s[i])];
+    } catch (...) {
+        return -1;
+    }
 
-	for (int i = 0; i < 6; i++)
-		if (count[i] != 9)
-			return -1;
+    for (int i = 0; i < 6; i++)
+        if (count[i] != 9)
+            return -1;
 
-	FaceCube fc(s);
-	CubieCube cc = fc.toCubieCube();
+    FaceCube fc(s);
+    CubieCube cc = fc.toCubieCube();
 
-	return cc.verify();
+    return cc.verify();
 }
 
 /**
@@ -56,22 +56,22 @@ int Tools::verify(std::string s) {
  * @return A random cube in the string representation. Each cube of the cube space has the same probability.
  */
 std::string Tools::randomCube() {
-	static bool initialized = false;
-	if (!initialized) {
-		srand(time(NULL));
-		initialized = true;
-	}
+    static bool initialized = false;
+    if (!initialized) {
+        srand(time(NULL));
+        initialized = true;
+    }
 
-	CubieCube cc;
-	cc.setFlip((short) (rand() % CoordCube::N_FLIP));
-	cc.setTwist((short) (rand() % CoordCube::N_TWIST));
-	do {
-		cc.setURFtoDLB((rand() % CoordCube::N_URFtoDLB));
-		cc.setURtoBR((rand() % CoordCube::N_URtoBR));
-	} while ((cc.edgeParity() ^ cc.cornerParity()) != 0);
+    CubieCube cc;
+    cc.setFlip((short) (rand() % CoordCube::N_FLIP));
+    cc.setTwist((short) (rand() % CoordCube::N_TWIST));
+    do {
+        cc.setURFtoDLB((rand() % CoordCube::N_URFtoDLB));
+        cc.setURtoBR((rand() % CoordCube::N_URtoBR));
+    } while ((cc.edgeParity() ^ cc.cornerParity()) != 0);
 
-	FaceCube fc(cc);
-	return fc.to_String();
+    FaceCube fc(cc);
+    return fc.to_String();
 }
 
 }

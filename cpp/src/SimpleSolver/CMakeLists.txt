@@ -1,7 +1,7 @@
 add_executable(SimpleSolver
-	SimpleSolver.cpp
+    SimpleSolver.cpp
 )
 
 target_link_libraries(SimpleSolver
-	SolverLib
+    SolverLib
 )

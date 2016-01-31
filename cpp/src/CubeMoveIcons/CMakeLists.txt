@@ -1,8 +1,8 @@
 add_executable(GenerateMoveIcons
-	MoveIcons.cpp
+    MoveIcons.cpp
 )
 
 target_link_libraries(GenerateMoveIcons
-	X11
-	pthread
+    X11
+    pthread
 )
