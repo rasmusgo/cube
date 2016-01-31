@@ -1,0 +1,6 @@
+{
+    "shell_cmd": "make -j8",
+    "working_dir": "${project_path:${folder}}/../cpp/build",
+    "file_regex": "^(.*):([0-9]*):[0-9]*: ",
+    "selector": "source.c++"
+}
