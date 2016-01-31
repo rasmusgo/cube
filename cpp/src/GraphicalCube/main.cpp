@@ -1,5 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 #include <GLFW/glfw3.h>
 
@@ -154,7 +155,7 @@ int main(int argc, char **argv)
 
     glfwSetKeyCallback(window, key_callback);
 
-
+    auto simulation_time = std::chrono::system_clock::now();
     while (!glfwWindowShouldClose(window))
     {
         glfwGetFramebufferSize(window, &window_width, &window_height);
@@ -162,7 +163,12 @@ int main(int argc, char **argv)
         Render();
         glfwSwapBuffers(window);
         glfwPollEvents();
-        gCube.tick(0.01);
+        auto wall_time = std::chrono::system_clock::now();
+        while (wall_time > simulation_time)
+        {
+            gCube.tick(0.005);
+            simulation_time += std::chrono::milliseconds(5);
+        }
     }
 
     glfwDestroyWindow(window);
