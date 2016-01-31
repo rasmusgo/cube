@@ -2,11 +2,11 @@
 
 #include <deque>
 
-#include <SolverLib/FaceCube.h>
-#include <SolverLib/MoveTable.h>
-#include <SolverLib/Search.h>
+#include <SolverLib/FaceCube.hpp>
+#include <SolverLib/MoveTable.hpp>
+#include <SolverLib/Search.hpp>
 
-#include "Sequence.h"
+#include "Sequence.hpp"
 
 class GraphicalCube {
 	twophase::FaceCube faceCube;

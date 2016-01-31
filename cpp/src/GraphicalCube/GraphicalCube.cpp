@@ -4,12 +4,12 @@
 #include <GL/gl.h>
 #include <math.h>
 
-#include <SolverLib/FaceCube.h>
-#include <SolverLib/MoveTable.h>
-#include <SolverLib/Tools.h>
+#include <SolverLib/FaceCube.hpp>
+#include <SolverLib/MoveTable.hpp>
+#include <SolverLib/Tools.hpp>
 
-#include "GraphicalCube.h"
-#include "Sequence.h"
+#include "GraphicalCube.hpp"
+#include "Sequence.hpp"
 
 using namespace twophase;
 

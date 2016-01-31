@@ -1,14 +1,7 @@
-/*
- * Tools.cpp
- *
- *  Created on: 2011-jun-28
- *      Author: morotspaj
- */
-
-#include "Tools.h"
-#include "CoordCube.h"
-#include "CubieCube.h"
-#include "FaceCube.h"
+#include "Tools.hpp"
+#include "CoordCube.hpp"
+#include "CubieCube.hpp"
+#include "FaceCube.hpp"
 
 #include <cstdlib>
 #include <cstdio>

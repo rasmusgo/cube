@@ -1,21 +1,13 @@
-//============================================================================
-// Name        : CubeRecognition.cpp
-// Author      : Rasmus Göransson
-// Version     :
-// Copyright   :
-// Description : Hello World in C, Ansi-style
-//============================================================================
-
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "CImg.h"
 using namespace cimg_library;
 
-#include "image.h"
+#include "Image.hpp"
 
-#include "Label.h"
-#include "createlabels.h"
+#include "Label.hpp"
+#include "CreateLabels.hpp"
 
 #define cimg_for3x3rgb(img,x,y,z,R,G,B,T) \
   cimg_for3((img)._height,y) for (int x = 0, \

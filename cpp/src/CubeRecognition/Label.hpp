@@ -6,7 +6,7 @@
  */
 
 // Etiketterna (labels) har fyra koordinatsystem.
-// De klassificeras efter vilket koordinatsystem som ger t‰tast bounding-box.
+// De klassificeras efter vilket koordinatsystem som ger t√§tast bounding-box.
 //
 //                                      .*.
 // 	typ_x: (x, ym)				     .*  U  *.
@@ -16,7 +16,7 @@
 //								   *.(x) | (y).*
 //								      *. | .*
 //  							         *
-// typ_s (square) anv‰nds inte, dessa etiketter sorteras bort som skr‰p.
+// typ_s (square) anv√§nds inte, dessa etiketter sorteras bort som skr√§p.
 
 //             min_y
 //     min_yp _  A  _ min_ym
@@ -35,8 +35,8 @@
 
 #include <vector>
 
-#include "settings.h"
-#include "vectormath.h"
+#include "Settings.hpp"
+#include "VectorMath.hpp"
 
 template <typename T>
 T xy2yp(T x, T y) {

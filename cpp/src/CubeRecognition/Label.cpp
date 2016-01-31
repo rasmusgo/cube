@@ -5,7 +5,7 @@
  *      Author: morotspaj
  */
 
-#include "Label.h"
+#include "Label.hpp"
 
 Label::Label(Real x, Real y, Real area, Real size[8]) :
 	x(x), y(y), area(area), used_in_grid(false)

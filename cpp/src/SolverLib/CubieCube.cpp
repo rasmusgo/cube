@@ -5,7 +5,7 @@
  *      Author: morotspaj
  */
 
-#include "CubieCube.h"
+#include "CubieCube.hpp"
 
 namespace twophase {
 

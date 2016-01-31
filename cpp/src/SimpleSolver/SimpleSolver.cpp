@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <string>
 
-#include <SolverLib/FaceCube.h>
-#include <SolverLib/CubieCube.h>
-#include <SolverLib/CoordCube.h>
-#include <SolverLib/Search.h>
-#include <SolverLib/Tools.h>
+#include <SolverLib/FaceCube.hpp>
+#include <SolverLib/CubieCube.hpp>
+#include <SolverLib/CoordCube.hpp>
+#include <SolverLib/Search.hpp>
+#include <SolverLib/Tools.hpp>
 
 int main( int argc, const char* argv[] ) {
 	if (argc != 2) {

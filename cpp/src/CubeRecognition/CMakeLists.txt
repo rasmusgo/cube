@@ -1,13 +1,12 @@
 add_executable(CubeRecognition
-	createlabels.cpp
-	createlabels.dep
-	createlabels.h
+	CreateLabels.cpp
+	CreateLabels.hpp
 	CubeRecognition.cpp
-	image.h
+	Image.hpp
 	Label.cpp
-	Label.h
-	settings.h
-	vectormath.h
+	Label.hpp
+	Settings.hpp
+	VectorMath.hpp
 )
 
 target_link_libraries(CubeRecognition

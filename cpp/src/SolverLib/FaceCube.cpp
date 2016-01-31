@@ -5,8 +5,8 @@
  *      Author: morotspaj
  */
 
-#include "FaceCube.h"
-#include "CubieCube.h"
+#include "FaceCube.hpp"
+#include "CubieCube.hpp"
 
 namespace twophase {
 

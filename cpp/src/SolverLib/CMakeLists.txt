@@ -1,15 +1,15 @@
 add_library(SolverLib STATIC
-	common.h
+	Common.hpp
 	CoordCube.cpp
-	CoordCube.h
+	CoordCube.hpp
 	CubieCube.cpp
-	CubieCube.h
+	CubieCube.hpp
 	FaceCube.cpp
-	FaceCube.h
+	FaceCube.hpp
 	MoveTable.cpp
-	MoveTable.h
+	MoveTable.hpp
 	Search.cpp
-	Search.h
+	Search.hpp
 	Tools.cpp
-	Tools.h
+	Tools.hpp
 )

@@ -1,8 +1,8 @@
 add_executable(GraphicalCube
+	graphical_cube_main.cpp
 	GraphicalCube.cpp
-	GraphicalCube.h
-	Sequence.h
-	main.cpp
+	GraphicalCube.hpp
+	Sequence.hpp
 )
 
 target_link_libraries(GraphicalCube

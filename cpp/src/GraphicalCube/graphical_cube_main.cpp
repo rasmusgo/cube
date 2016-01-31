@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "GraphicalCube.h"
+#include "GraphicalCube.hpp"
 
 static int window_width = 600;
 static int window_height = 600;

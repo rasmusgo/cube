@@ -1,5 +1,5 @@
-#include "MoveTable.h"
-#include "FaceCube.h"
+#include "MoveTable.hpp"
+#include "FaceCube.hpp"
 
 #include <string>
 

@@ -7,8 +7,8 @@
 
 #include <cstdio>
 
-#include "CoordCube.h"
-#include "CubieCube.h"
+#include "CoordCube.hpp"
+#include "CubieCube.hpp"
 
 namespace twophase {
 

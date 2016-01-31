@@ -1,18 +1,11 @@
-/*
- * Search.cpp
- *
- *  Created on: 2011-jun-28
- *      Author: morotspaj
- */
+#include <cstdlib>
+#include <cstdio>
+#include <time.h>
 
-#include "Search.h"
-#include "FaceCube.h"
-#include "CubieCube.h"
-#include "CoordCube.h"
-
-#include "cstdlib"
-#include "cstdio"
-#include "time.h"
+#include "Search.hpp"
+#include "FaceCube.hpp"
+#include "CubieCube.hpp"
+#include "CoordCube.hpp"
 
 namespace twophase {
 

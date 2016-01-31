@@ -8,7 +8,7 @@
 #ifndef COORDCUBE_H_
 #define COORDCUBE_H_
 
-#include "common.h"
+#include "Common.hpp"
 
 namespace twophase {
 

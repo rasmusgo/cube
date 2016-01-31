@@ -8,7 +8,7 @@
 #ifndef CUBIECUBE_H_
 #define CUBIECUBE_H_
 
-#include "common.h"
+#include "Common.hpp"
 
 namespace twophase {
 

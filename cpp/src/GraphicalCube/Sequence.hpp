@@ -4,14 +4,14 @@
 #include <string>
 #include <sstream>
 
-#include <SolverLib/common.h>
-#include <SolverLib/MoveTable.h>
+#include <SolverLib/Common.hpp>
+#include <SolverLib/MoveTable.hpp>
 
 class Sequence {
 public:
 	struct Animation {
 		Animation() :
-			time(0.05f)
+			time(0.025f)
 		{
 			for (int i = 0; i < 3; ++i)
 				for (int j = 0; j < 3; ++j) {

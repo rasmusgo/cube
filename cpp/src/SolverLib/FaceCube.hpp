@@ -9,8 +9,8 @@
 #ifndef FACECUBE_H_
 #define FACECUBE_H_
 
-#include "common.h"
-#include "CubieCube.h"
+#include "Common.hpp"
+#include "CubieCube.hpp"
 
 #include <cstdio>
 #include <string>

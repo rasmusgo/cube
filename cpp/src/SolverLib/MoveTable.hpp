@@ -1,5 +1,5 @@
 #pragma once
-#include "FaceCube.h"
+#include "FaceCube.hpp"
 
 #include <map>
 #include <string>

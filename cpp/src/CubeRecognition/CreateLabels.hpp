@@ -11,7 +11,7 @@
 #include "CImg.h"
 using namespace cimg_library;
 
-#include "Label.h"
+#include "Label.hpp"
 
 typedef float DT;
 std::vector<Label> createlabels(CImg<DT> &im_out, const CImg<float> &im, float threshold);
