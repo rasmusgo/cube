@@ -1,7 +1,7 @@
 add_executable(CubeRecognition
     CreateLabels.cpp
     CreateLabels.hpp
-    CubeRecognition.cpp
+    cube_recognition_main.cpp
     Image.hpp
     Label.cpp
     Label.hpp

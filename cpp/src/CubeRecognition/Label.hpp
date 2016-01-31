@@ -1,15 +1,15 @@
-// Etiketterna (labels) har fyra koordinatsystem.
-// De klassificeras efter vilket koordinatsystem som ger tätast bounding-box.
+// The labels use four coordinate systems.
+// They are classified based on what coordinate system gives the tightest bounding box.
 //
-//                                      .*.
-//     typ_x: (x, ym)                     .*  U  *.
-//    typ_y: (x, yp)                   *.   (z)   .*      .-----.
-//    typ_z: (yp, ym)                   |  *.   .*  |      | (s) |
-//    typ_s: (x, y)                   |  F  *  R  |      *-----*
-//                                   *.(x) | (y).*
-//                                      *. | .*
-//                                       *
-// typ_s (square) används inte, dessa etiketter sorteras bort som skräp.
+//                                     .*.
+//    typ_x: (x, ym)                .*  U  *.
+//    typ_y: (x, yp)              *.   (z)   .*      .-----.
+//    typ_z: (yp, ym)             |  *.   .*  |      | (s) |
+//    typ_s: (x, y)               |  F  *  R  |      *-----*
+//                                *.(x) | (y).*
+//                                   *. | .*
+//                                      *
+// typ_s (square) is not used, those candidates are discarded.
 
 //             min_y
 //     min_yp _  A  _ min_ym
@@ -23,8 +23,7 @@
 //     max_ym    V    max_yp
 //             max_y
 
-#ifndef LABEL_H_
-#define LABEL_H_
+#pragma once
 
 #include <vector>
 
@@ -81,5 +80,3 @@ struct Label {
     Vec2r native2xy(Real nx, Real ny);
     Vec2r xy2native(Real x, Real y);
 };
-
-#endif /* LABEL_H_ */
