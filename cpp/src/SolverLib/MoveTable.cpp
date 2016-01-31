@@ -1,10 +1,3 @@
-/*
- * MoveTable.cpp
- *
- *  Created on: 2011-jun-28
- *      Author: morotspaj
- */
-
 #include "MoveTable.h"
 #include "FaceCube.h"
 
