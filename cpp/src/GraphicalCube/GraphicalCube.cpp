@@ -75,17 +75,25 @@ void GraphicalCube::animate(const Sequence::Animation &a) {
 	animations.push_back(a);
 }
 
-static void bringTowardsZero(float &value, float d) {
+static float bringTowardsZero(float &value, float d) {
 	if (value > 0) {
-		if (value <= d)
+		if (value <= d) {
+			float rest = d - value;
 			value = 0;
-		else
+			return rest;
+		} else {
 			value -= d;
+			return 0;
+		}
 	} else {
-		if (value >= -d)
+		if (value >= -d) {
+			float rest = -d - value;
 			value = 0;
-		else
+			return rest;
+		} else {
 			value += d;
+			return 0;
+		}
 	}
 }
 
@@ -96,13 +104,14 @@ static float interpolate(float a, float b, float x) {
 // Execute queued moves
 bool GraphicalCube::tick(float time) {
 	// Go forwards in time
-	bringTowardsZero(animationTime, time);
+	float rest = bringTowardsZero(animationTime, time);
 
 	// Pop a new animation from the queue
 	if (animationTime == 0 && animations.size() > 0) {
 		activeAnimation = animations.front();
 		animations.pop_front();
 		animationTime = activeAnimation.time;
+		bringTowardsZero(animationTime, rest);
 		// Execute the associated move
 		activeAnimation.move.call(faceCube);
 	}
