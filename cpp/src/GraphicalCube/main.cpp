@@ -155,7 +155,9 @@ int main(int argc, char **argv)
 
     glfwSetKeyCallback(window, key_callback);
 
+    auto start_time = std::chrono::system_clock::now();
     auto simulation_time = std::chrono::system_clock::now();
+    bool is_moving = false;
     while (!glfwWindowShouldClose(window))
     {
         glfwGetFramebufferSize(window, &window_width, &window_height);
@@ -166,8 +168,20 @@ int main(int argc, char **argv)
         auto wall_time = std::chrono::system_clock::now();
         while (wall_time > simulation_time)
         {
-            gCube.tick(0.005);
+            bool was_moving = is_moving;
+            is_moving = gCube.tick(0.005);
             simulation_time += std::chrono::milliseconds(5);
+            if (!was_moving && is_moving)
+            {
+                start_time = simulation_time;
+            }
+            if (was_moving && !is_moving)
+            {
+                auto stop_time = simulation_time;
+                double duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() * 1.e-3;
+                printf("Sequence took: %.3f seconds\n", duration);
+                fflush(stdout);
+            }
         }
     }
 

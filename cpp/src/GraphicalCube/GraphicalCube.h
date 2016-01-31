@@ -35,7 +35,7 @@ private:
 
 public:
 	void move(std::string str);
-	void tick(float time);
+	bool tick(float time);
 	void randomize();
 	void solve();
 	void clean();

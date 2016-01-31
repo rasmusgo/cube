@@ -94,7 +94,7 @@ static float interpolate(float a, float b, float x) {
 }
 
 // Execute queued moves
-void GraphicalCube::tick(float time) {
+bool GraphicalCube::tick(float time) {
 	// Go forwards in time
 	bringTowardsZero(animationTime, time);
 
@@ -117,6 +117,7 @@ void GraphicalCube::tick(float time) {
 		faceRotations[i+3] = (b - c) * M_PI_2;
 		centerRotation[i]  =  b      * M_PI_2;
 	}
+	return animationTime != 0;
 }
 
 void GraphicalCube::randomize()
@@ -141,7 +142,24 @@ void GraphicalCube::solve()
 
 	std::string str = search->solution(faceCube.to_String(), 18, 15, false);
 
-	printf("Solution: %s\n", str.c_str());
+	int move_count = 0;
+	bool new_word = true;
+	for (auto c : str)
+	{
+		if (c == ' ')
+		{
+			new_word = true;
+		}
+		else
+		{
+			if (new_word)
+			{
+				move_count += 1;
+			}
+			new_word = false;
+		}
+	}
+	printf("Solution in %d moves: %s\n", move_count, str.c_str());
 	fflush(stdout);
 	this->move(str);
 }
