@@ -60,40 +60,40 @@ void CoordCube::initMoveTables() {
                 sizeof(Slice_URtoDF_Parity_Prun) +
                 sizeof(Slice_Twist_Prun) +
                 sizeof(Slice_Flip_Prun) ) {
-            printf("Loaded move tables from disk.\n"); fflush(stdout);
+            fprintf(stderr, "Loaded move tables from disk.\n"); fflush(stdout);
             return; // Load was successful
         } else {
-            printf("Failed to load move tables from disk.\n"); fflush(stdout);
+            fprintf(stderr, "Failed to load move tables from disk.\n"); fflush(stdout);
         }
     }
 
     // Build move tables
-    printf("Building move tables\n"); fflush(stdout);
+    fprintf(stderr, "Building move tables\n"); fflush(stderr);
     initTwistMove();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initFlipMove();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initFRtoBR_Move();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initURFtoDLF_Move();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initURtoDF_Move();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stdout);
     initURtoUL_Move();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stdout);
     initUBtoDF_Move();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initMergeURtoULandUBtoDF();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initSlice_URFtoDLF_Parity_Prun();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initSlice_URtoDF_Parity_Prun();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initSlice_Twist_Prun();
-    printf("."); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
     initSlice_Flip_Prun();
-    printf("."); fflush(stdout);
-    printf("Done\n"); fflush(stdout);
+    fprintf(stderr, "."); fflush(stderr);
+    fprintf(stderr, "Done\n"); fflush(stderr);
 
     // Store move tables to disk
     stream = fopen("movetables", "wb");
@@ -128,9 +128,9 @@ void CoordCube::initMoveTables() {
                 sizeof(Slice_URtoDF_Parity_Prun) +
                 sizeof(Slice_Twist_Prun) +
                 sizeof(Slice_Flip_Prun) ) {
-            printf("Stored move tables to disk.\n"); fflush(stdout);
+            fprintf(stderr, "Stored move tables to disk.\n"); fflush(stderr);
         } else {
-            printf("Failed to store move tables to disk.\n"); fflush(stdout);
+            fprintf(stderr, "Failed to store move tables to disk.\n"); fflush(stderr);
         }
     }
 }

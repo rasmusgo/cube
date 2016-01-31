@@ -58,16 +58,13 @@ const MoveTable::TableEntry& MoveTable::getMove(std::string mv) {
     if (it != table.end())
         return it->second;
 
-    printf("%s: %s(%d): Unknown move: %s\n", __FILE__, __FUNCTION__, __LINE__, mv.c_str());
-    fflush(stdout);
+    fprintf(stderr, "%s: %s(%d): Unknown move: %s\n", __FILE__, __FUNCTION__, __LINE__, mv.c_str());
+    fflush(stderr);
     static const TableEntry e;
     return e;
 }
 
 void MoveTable::move(twophase::FaceCube &fc, std::string mv) {
-//    printf("%s: %s(%d)\n", __FILE__, __FUNCTION__, __LINE__);
-//    fflush(stdout);
-
     init();
     typeof(table.end()) it = table.find(mv);
     if (it != table.end())
