@@ -11,9 +11,11 @@ add_subdirectory("thirdparty/glfw-3.1.2")
 
 include_directories(
 	"${PROJECT_SOURCE_DIR}/src"
-	"${PROJECT_SOURCE_DIR}/thirdparty"
 	"${PROJECT_SOURCE_DIR}/thirdparty/glfw-3.1.2/include"
 )
+
+find_package(OpenCV REQUIRED)
+include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 add_subdirectory("src/CubeMoveIcons")
 add_subdirectory("src/CubeRecognition")

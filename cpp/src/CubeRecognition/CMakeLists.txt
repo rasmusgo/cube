@@ -10,6 +10,5 @@ add_executable(CubeRecognition
 )
 
 target_link_libraries(CubeRecognition
-    X11
-    pthread
+    ${OpenCV_LIBS}
 )

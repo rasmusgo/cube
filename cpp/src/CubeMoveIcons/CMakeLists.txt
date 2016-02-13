@@ -3,6 +3,5 @@ add_executable(GenerateMoveIcons
 )
 
 target_link_libraries(GenerateMoveIcons
-    X11
-    pthread
+    ${OpenCV_LIBS}
 )
