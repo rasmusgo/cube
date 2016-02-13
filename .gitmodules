@@ -1,0 +1,3 @@
+[submodule "cpp/thirdparty/opencv"]
+	path = cpp/thirdparty/opencv
+	url = https://github.com/Itseez/opencv
