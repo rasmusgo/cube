@@ -1,11 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
 
-#include <CImg.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 
-using namespace cimg_library;
-
-void bend(float &x, float &y, int size) {
+void bend(float &x, float &y, int size)
+{
     // Transform the object by bending it as if it was bent in a elliptical way
     //      __
     //     / /
@@ -25,10 +27,22 @@ void bend(float &x, float &y, int size) {
     y = sin(a)*d*size + size*0.5;
 }
 
+void drawPolygon(cv::Mat& img, const cv::Mat1f& polygon, const cv::Scalar& color)
+{
+    std::vector<cv::Point> poly_points(polygon.rows);
+    cv::Mat2f shallow_copy = polygon.reshape(2);
+    std::transform(shallow_copy.begin(), shallow_copy.end(), poly_points.begin(), [](cv::Vec2f& p)
+    {
+        return cv::Point(p[0] * 256, p[1] * 256);
+    });
+    cv::fillPoly(img, std::vector<std::vector<cv::Point>>{poly_points}, color, cv::LINE_AA, 8);
+}
+
 // Generate move icons and store them on disk
-int main() {
+int main()
+{
     // Arrows are triangles and rectangles
-    //       _           _           _
+    //       .           _           .
     //      / \     ^   | |         / \
     //     /   \    |   | |        /   \
     //    /     \   | arrowsize   / / \ \
@@ -56,11 +70,11 @@ int main() {
     int width = margin_x*2 + linewidth;
 
     // The arrows are black on a white background
-    unsigned char color[3] = {0, 0, 0};
-    unsigned char color2[3] = {64, 64, 64};
+    cv::Scalar color{0, 0, 0};
+    cv::Scalar color2{64, 64, 64};
 
     const int arrow_point_count = 5;
-    CImg<float> arrow1(arrow_point_count,2);
+    cv::Mat1f arrow1(arrow_point_count,2);
     {
         int i = 0;
         arrow1(i,0) = margin_x + linewidth/2;            arrow1(i++,1) = margin_y - linewidth/2;
@@ -76,11 +90,11 @@ int main() {
         arrow1(i,0) = margin_x + linewidth;              arrow1(i++,1) = margin_y;
     }
 
-    CImg<float> arrow2(arrow1);
+    cv::Mat1f arrow2(arrow1.clone());
     for (int i = 0; i < arrow_point_count; ++i)
         arrow2(i,1) += arrowspacing;
 
-    CImg<float> line(22,2);
+    cv::Mat1f line(22,2);
     {
         int i = 0;
         int from = margin_y;
@@ -97,27 +111,28 @@ int main() {
     // The arrow coordinates are then bent and different arrowheads are drawn
     // The images are then mirrored and rotated to create arrows in all desired directions
 
-    CImg<unsigned char> bg(width,height, 1, 3);
-    bg.fill(255);
+    cv::Mat1b bg(cv::Size(width,height), 255);
 
-    CImg<unsigned char> img_R0(bg);
-    img_R0.draw_polygon(line, color2);
+    cv::Mat1b img_R0(bg.clone());
+    drawPolygon(img_R0, line, color2);
 
-    CImg<unsigned char> img_R1(bg);
-    img_R1.draw_polygon(line, color);
-    img_R1.draw_polygon(arrow1, color);
+    cv::Mat1b img_R1(bg.clone());
+    drawPolygon(img_R1, line, color);
+    drawPolygon(img_R1, arrow1, color);
 
-    CImg<unsigned char> img_R2(img_R1);
-    img_R2.draw_polygon(arrow2, color);
+    cv::Mat1b img_R2(img_R1.clone());
+    drawPolygon(img_R2, arrow2, color);
 
-    CImg<unsigned char> img_R1m(img_R1.get_mirror('y'));
-    CImg<unsigned char> img_R2m(img_R2.get_mirror('y'));
+    cv::Mat1b img_R1m;
+    cv::Mat1b img_R2m;
+    cv::flip(img_R1, img_R1m, 0);
+    cv::flip(img_R2, img_R2m, 0);
 
-    CImg<unsigned char> img_U0(img_R0.get_rotate(-90));
-    CImg<unsigned char> img_U1(img_R1.get_rotate(-90));
-    CImg<unsigned char> img_U2(img_R2.get_rotate(-90));
-    CImg<unsigned char> img_U1m(img_R1m.get_rotate(-90));
-    CImg<unsigned char> img_U2m(img_R2m.get_rotate(-90));
+    cv::Mat1b img_U0(img_R0.t());
+    cv::Mat1b img_U1(img_R1.t());
+    cv::Mat1b img_U2(img_R2.t());
+    cv::Mat1b img_U1m(img_R1m.t());
+    cv::Mat1b img_U2m(img_R2m.t());
 
     // Bend the polygon arrows
     for (int i=0; i < arrow_point_count; ++i)
@@ -127,181 +142,74 @@ int main() {
     for (int i=0; i < 22; ++i)
         bend(line(i,0), line(i,1), height);
 
-    CImg<unsigned char> img_F0(bg);
-    img_F0.draw_polygon(line, color2);
+    cv::Mat1b img_F0(bg.clone());
+    drawPolygon(img_F0, line, color2);
 
-    CImg<unsigned char> img_F1(bg);
-    img_F1.draw_polygon(line, color);
-    img_F1.draw_polygon(arrow1, color);
+    cv::Mat1b img_F1m(bg.clone());
+    drawPolygon(img_F1m, line, color);
+    drawPolygon(img_F1m, arrow1, color);
 
-    CImg<unsigned char> img_F2(img_F1);
-    img_F2.draw_polygon(arrow2, color);
+    cv::Mat1b img_F2m(img_F1m.clone());
+    drawPolygon(img_F2m, arrow2, color);
 
-    img_F0.rotate(90);
-    img_F1.rotate(90);
-    img_F2.rotate(90);
+    img_F0 = img_F0.t();
+    img_F1m = img_F1m.t();
+    img_F2m = img_F2m.t();
 
-    CImg<unsigned char> img_F1m(img_F1.get_mirror('x'));
-    CImg<unsigned char> img_F2m(img_F2.get_mirror('x'));
+    cv::Mat1b img_F1;
+    cv::flip(img_F1m, img_F1, 1);
+    cv::Mat1b img_F2;
+    cv::flip(img_F2m, img_F2, 1);
 
-    CImgList<unsigned char> list(15);
-    {
-        int i = 0;
-        list[i++] = img_U2m;
-        list[i++] = img_U1m;
-        list[i++] = img_U0;
-        list[i++] = img_U1;
-        list[i++] = img_U2;
-        list[i++] = img_R2m;
-        list[i++] = img_R1m;
-        list[i++] = img_R0;
-        list[i++] = img_R1;
-        list[i++] = img_R2;
-        list[i++] = img_F2m;
-        list[i++] = img_F1m;
-        list[i++] = img_F0;
-        list[i++] = img_F1;
-        list[i++] = img_F2;
-    }
+    std::vector<cv::Mat1b> list{
+        img_U2m,
+        img_U1m,
+        img_U0,
+        img_U1,
+        img_U2,
+        img_R2m,
+        img_R1m,
+        img_R0,
+        img_R1,
+        img_R2,
+        img_F2m,
+        img_F1m,
+        img_F0,
+        img_F1,
+        img_F2};
 
     const char name[][8] = {
-            "U-2",
-            "U-1",
-            "U0",
-            "U1",
-            "U2",
-            "R-2",
-            "R-1",
-            "R0",
-            "R1",
-            "R2",
-            "F-2",
-            "F-1",
-            "F0",
-            "F1",
-            "F2",
+        "U-2",
+        "U-1",
+        "U0",
+        "U1",
+        "U2",
+        "R-2",
+        "R-1",
+        "R0",
+        "R1",
+        "R2",
+        "F-2",
+        "F-1",
+        "F0",
+        "F1",
+        "F2",
     };
 
     for (int i = 0; i < 15; ++i) {
         // Generate filename
         char str[120];
-        sprintf(str, "icons/move_%s.bmp", name[i]);
+        sprintf(str, "icons/move_%s.png", name[i]);
         //printf("Saving %s\n", str);
 
         // Save
-        list[i].resize(-10, -10, -100, -100, 2).save(str);
+        cv::Mat small;
+        cv::resize(list[i], small, cv::Size(), 0.1, 0.1, cv::INTER_AREA);
+        cv::imwrite(str, small);
 
-        // Convert to png
-        sprintf(str, "convert icons/move_%s.bmp icons/move_%s.png", name[i], name[i]);
-        printf("%s\n", str);
-        fflush(stdout);
-        //system(str);
+        cv::imshow(name[i], small);
     }
 
-    CImgDisplay main_disp(list, "Arrow");
-    while (!main_disp.is_closed() )
-        main_disp.wait();
+    cv::waitKey(0);
     return 0;
-/*
-    // Line positions
-    int lpos[] = {
-            margin + linewidth*2 + spacing*2,
-            margin + linewidth + spacing,
-            margin,
-    };
-
-    // Draw the lines of the arrows as rectangles
-    for (int i = 0; i < 3; ++i)
-        img.draw_rectangle(
-                lpos[i], margin,
-                lpos[i] + linewidth - 1, height - margin - 1,
-                color);
-
-    // Arrow positions
-    int apos[] = {
-            lpos[0] + linewidth * 0.5,
-            lpos[1] + linewidth * 0.5,
-            lpos[2] + linewidth * 0.5,
-    };
-
-
-    // There are three lines and six possible positions for arrowheads
-    int i[3];
-    for (i[0] = -2; i[0] <= 2; ++i[0])
-        for (i[1] = -2; i[1] <= 2; ++i[1])
-            for (i[2] = -2; i[2] <= 2; ++i[2]) {
-                // Start from an image with background lines
-                CImg<> icon(img);
-
-                // Draw arrowheads
-                for (int j = 0; j < 3; ++j) {
-
-                    if (i[j] <= -1) {
-                        // Erase the line under the tip of the arrowhead
-                        icon.draw_rectangle(
-                                apos[j] - arrowsize, height - margin - 1 - arrowsize,
-                                apos[j] + arrowsize, height - margin - 1,
-                                bgcolor);
-                        // Draw one arrowhead
-                        icon.draw_triangle(
-                                apos[j], height - margin - 1,
-                                apos[j] - arrowsize, height - margin - 1 - arrowsize,
-                                apos[j] + arrowsize, height - margin - 1 - arrowsize,
-                                color);
-                        // Draw a second arrowhead
-                        if (i[j] <= -2)
-                            icon.draw_triangle(
-                                    apos[j], height - margin - 1 - arrowsize,
-                                    apos[j] - arrowsize, height - margin - 1 - 2*arrowsize,
-                                    apos[j] + arrowsize, height - margin - 1 - 2*arrowsize,
-                                    color);
-                    } else if (i[j] >= 1) {
-                        // Erase the line under the tip of the arrowhead
-                        icon.draw_rectangle(
-                                apos[j] - arrowsize, margin,
-                                apos[j] + arrowsize, margin + arrowsize,
-                                bgcolor);
-                        // Draw one arrowhead
-                        icon.draw_triangle(
-                                apos[j], margin,
-                                apos[j] - arrowsize, margin + arrowsize,
-                                apos[j] + arrowsize, margin + arrowsize,
-                                color);
-                        // Draw a second arrowhead
-                        if (i[j] >= 2)
-                            icon.draw_triangle(
-                                    apos[j], margin + arrowsize,
-                                    apos[j] - arrowsize, margin + 2*arrowsize,
-                                    apos[j] + arrowsize, margin + 2*arrowsize,
-                                    color);
-                    }
-                }
-
-                // Store the image on disk
-                // First as U, then rotate and store as R,
-                // then bend the arrows and store as F
-
-                // Generate filename
-                char str[120];
-                sprintf(str, "icons/move_%s%d%d%d.bmp", "R", i[0], i[1], i[2]);
-                printf("Saving %s\n", str);
-                icon.save(str);
-                printf("Converting %s\n", str);
-                sprintf(str, "convert icons/move_%s%d%d%d.bmp icons/move_%s%d%d%d.png", "R", i[0], i[1], i[2], "R", i[0], i[1], i[2]);
-                system(str);
-
-                // Rotate and store as U
-                icon.rotate(-90, 0, 0, 1, 2, 0);
-                sprintf(str, "icons/move_%s%d%d%d.bmp", "U", i[0], i[1], i[2]);
-                printf("Saving %s\n", str);
-                icon.save(str);
-                printf("Converting %s\n", str);
-                sprintf(str, "convert icons/move_%s%d%d%d.bmp icons/move_%s%d%d%d.png", "U", i[0], i[1], i[2], "U", i[0], i[1], i[2]);
-                system(str);
-
-                // Bend the lines
-                icon = img.get_fill(255);
-            }
-    return 0;
-    */
 }
