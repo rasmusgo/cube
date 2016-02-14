@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <sstream>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
@@ -48,6 +49,26 @@ void connectLabels(const std::vector<Label>& labels)
             cv::Rect rect = label.native_rect - cv::Point2f(min_x, min_y);
             cv::rectangle(canvas, rect, colors[i]);
         }
+
+        for (const auto& label : group)
+        {
+            float rel_x = (label.native.x - min_x) / (max_x - min_x);
+            float rel_y = (label.native.y - min_y) / (max_y - min_y);
+            int id_width  = std::round(3 * label.native_rect.width  / (max_x - min_x));
+            int id_height = std::round(3 * label.native_rect.height / (max_y - min_y));
+            float id_x = (id_width  == 2 ? std::round(rel_x * 3) - 0.5f : std::round(rel_x * 3 - 0.5f));
+            float id_y = (id_height == 2 ? std::round(rel_y * 3) - 0.5f : std::round(rel_y * 3 - 0.5f));
+
+            std::stringstream text;
+            text << id_x << "," << id_y;
+            cv::Point text_position(label.native.x - min_x, label.native.y - min_y);
+            int baseline;
+            cv::Size text_size = cv::getTextSize(text.str(), cv::FONT_HERSHEY_PLAIN, 1.0, 1, &baseline);
+            text_position.x -= text_size.width / 2;
+            text_position.y += text_size.height / 2;
+            cv::putText(canvas, text.str(), text_position, cv::FONT_HERSHEY_PLAIN, 1.0, colors[i]);
+        }
+
         cv::imshow(winnames[i], canvas);
     }
 }
