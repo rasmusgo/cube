@@ -1,41 +1,47 @@
 #include "Label.hpp"
 
-Label::Label(Real x, Real y, Real area, Real size[8]) :
-    x(x), y(y), area(area), used_in_grid(false)
+Label::Label(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size)
+    : center(center), size(size), area(area), used_in_grid(false)
 {
-    for (int i = 0; i < 8; ++i)
-    {
-        this->size[i] = size[i];
-    }
-    Real sx = size[1] - size[0] + 1;
-    Real sy = size[3] - size[2] + 1;
-    Real syp = size[5] - size[4] + 1;
-    Real sym = size[7] - size[6] + 1;
-    Real typ_x = area / (sx * sym);
-    Real typ_y = area / (sx * syp);
-    Real typ_z = area / ypym2area(syp, sym);
-    Real typ_s = area / (sx * sy);
+    float sx = size[1] - size[0] + 1;
+    float sy = size[3] - size[2] + 1;
+    float syp = size[5] - size[4] + 1;
+    float sym = size[7] - size[6] + 1;
+    float type_f = area / (sx * sym);
+    float type_r = area / (sx * syp);
+    float type_u = area / ypym2area(syp, sym);
+    float type_s = area / (sx * sy);
 
-    Real quality[4] = {typ_x, typ_y, typ_z, typ_s};
+    float quality[4] = {type_f, type_r, type_u, type_s};
 
     this->type = 0;
     this->qmax = quality[0];
-    for (int i = 1; i < 4; ++i) {
-        if (quality[i] > this->qmax) {
+    for (int i = 1; i < 4; ++i)
+    {
+        if (quality[i] > this->qmax)
+        {
             this->type = i;
             this->qmax = quality[i];
         }
     }
 
-    native = this->xy2native(x,y);
+    cv::Rect2f rects[] = {
+        cv::Rect2f(cv::Point2f(size[0], size[6]), cv::Point(size[1], size[7])),
+        cv::Rect2f(cv::Point2f(size[0], size[4]), cv::Point(size[1], size[5])),
+        cv::Rect2f(cv::Point2f(size[4], size[6]), cv::Point(size[5], size[7])),
+        cv::Rect2f(cv::Point2f(size[0], size[2]), cv::Point(size[1], size[3])),
+    };
+    native = this->xy2native(center.x, center.y);
+    native_rect = rects[type];
 }
 
 // Give proposals on where neighbors can be found
-std::vector<Vec2r> Label::guessneighbors() {
-    Vec2r np = this->xy2native(this->x, this->y);
+std::vector<cv::Point> Label::guessneighbors()
+{
+    cv::Point2f np = this->native;
 
     // Find native size
-    Real nsize[4][4] = {
+    float nsize[4][4] = {
         // Type 0: 0167 x,ym
         {this->size[0], this->size[1], this->size[6], this->size[7]},
         // Type 1: 0145 x,yp
@@ -46,12 +52,12 @@ std::vector<Vec2r> Label::guessneighbors() {
         {this->size[0], this->size[1],this->size[2], this->size[3]},
     };
 
-    Real snx = nsize[type][1] - nsize[type][0];
-    Real sny = nsize[type][3] - nsize[type][2];
-    Real snx2 = snx*1.5;
-    Real sny2 = sny*1.5;
+    float snx = nsize[type][1] - nsize[type][0];
+    float sny = nsize[type][3] - nsize[type][2];
+    float snx2 = snx*1.5;
+    float sny2 = sny*1.5;
 
-    std::vector<Vec2r> guesses;
+    std::vector<cv::Point> guesses;
     guesses.push_back(this->native2xy(np.x + snx, np.y));
     guesses.push_back(this->native2xy(np.x - snx, np.y));
     guesses.push_back(this->native2xy(np.x, np.y + sny));
@@ -72,64 +78,73 @@ std::vector<Vec2r> Label::guessneighbors() {
     return guesses;
 }
 
-Vec2r Label::native2xy(Real nx, Real ny) const {
+cv::Point2f Label::native2xy(float nx, float ny) const
+{
     if (this->type == 0) {
         // x,ym
-        return Vec2r(nx, xym2y(nx, ny));
+        return cv::Point2f(nx, xym2y(nx, ny));
     } else if (this->type == 1) {
         // x,yp
-        return Vec2r(nx, xyp2y(nx, ny));
+        return cv::Point2f(nx, xyp2y(nx, ny));
     } else if (this->type == 2) {
         // yp,ym
-        return Vec2r(ypym2x(nx, ny), ypym2y(nx, ny));
+        return cv::Point2f(ypym2x(nx, ny), ypym2y(nx, ny));
     } else {
         // Square x,y
-        return Vec2r(nx, ny);
+        return cv::Point2f(nx, ny);
     }
 }
 
-Vec2r Label::xy2native(Real x, Real y) const {
+cv::Point2f Label::xy2native(float x, float y) const
+{
     if (this->type == 0) {
         // x,ym
-        return Vec2r(x, xy2ym(x, y));
+        return cv::Point2f(x, xy2ym(x, y));
     } else if (this->type == 1) {
         // x,yp
-        return Vec2r(x, xy2yp(x, y));
+        return cv::Point2f(x, xy2yp(x, y));
     } else if (this->type == 2) {
         // yp,ym
-        return Vec2r(xy2yp(x, y), xy2ym(x, y));
+        return cv::Point2f(xy2yp(x, y), xy2ym(x, y));
     } else {
         // Square x,y
-        return Vec2r(x, y);
+        return cv::Point2f(x, y);
     }
 }
-/*
-    function is_neighbor(other) {
-        if (this->type != other->type)
-            return false;
 
-        // Find native coordinates
-        asize = this->nativesize();
-        bsize = other->nativesize();
-
-        // See if limits are close to each other
-        sx = min(asize[1] - asize[0], bsize[1] - bsize[0]);
-        sy = min(asize[3] - asize[2], bsize[3] - bsize[2]);
-
-        tolx = sx*0.5;
-        toly = sy*0.5;
-
-        // neighbors in x
-        // |a||b|
-        // and neighbors in y
-        // |a|
-        // |b|
-        if ((abs(asize[0] - bsize[0]) < tolx || abs(asize[1] - bsize[1]) < tolx || abs(asize[0] - bsize[1]) < tolx || abs(asize[1] - bsize[0]) < tolx) &&
-            (abs(asize[2] - bsize[2]) < toly || abs(asize[3] - bsize[3]) < toly || abs(asize[2] - bsize[3]) < toly || abs(asize[3] - bsize[2]) < toly) )
-            return true;
+bool are_neighbors(const Label& a, const Label& b)
+{
+    if (a.type != b.type)
         return false;
-    }
 
+    // See if limits are close to each other
+    float sx = std::min(a.native_rect.width, b.native_rect.width);
+    float sy = std::min(a.native_rect.height, b.native_rect.height);
+
+    float tolx = sx*0.5;
+    float toly = sy*0.5;
+
+    float a_left   = a.native_rect.x;
+    float a_right  = a.native_rect.x + a.native_rect.width;
+    float a_top    = a.native_rect.y;
+    float a_bottom = a.native_rect.y + a.native_rect.height;
+
+    float b_left   = b.native_rect.x;
+    float b_right  = b.native_rect.x + b.native_rect.width;
+    float b_top    = b.native_rect.y;
+    float b_bottom = b.native_rect.y + b.native_rect.height;
+    // neighbors in x
+    // |a||b|
+    // and neighbors in y
+    // |a|
+    // |b|
+    if ((std::abs(a_left - b_left) < tolx || std::abs(a_right - b_right) < tolx || std::abs(a_left - b_right) < tolx || std::abs(a_right - b_left) < tolx) &&
+        (std::abs(a_top - b_top) < toly || std::abs(a_bottom - b_bottom) < toly || std::abs(a_top - b_bottom) < toly || std::abs(a_bottom - b_top) < toly) )
+        return true;
+    return false;
+}
+
+/*
 // Draw a little box around the center of the label
 // im - image resource to be drawn on
 public function mark_centre(im) {

@@ -36,8 +36,8 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
     if (secondarytrace)
         d.x = -d.x;
 
-    Real zerosize[8] = {0,0,0,0,0,0,0,0,};
-    Label bad_label(0,0,0,zerosize);
+    cv::Vec<float, 8> zerosize{0,0,0,0,0,0,0,0};
+    Label bad_label(cv::Point2f(0,0), 0.f, zerosize);
 
     auto is_inside_image = [&](const cv::Point& p)
     {
@@ -73,14 +73,14 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
     // Turn right
     d = cv::Point(-d.y, d.x);
 
-    Real xmax = -99999999;
-    Real xmin = 99999999;
-    Real ymax = -99999999;
-    Real ymin = 99999999;
-    Real ypmax = -99999999;
-    Real ypmin = 99999999;
-    Real ymmax = -99999999;
-    Real ymmin = 99999999;
+    float xmax = -99999999;
+    float xmin = 99999999;
+    float ymax = -99999999;
+    float ymin = 99999999;
+    float ypmax = -99999999;
+    float ypmin = 99999999;
+    float ymmax = -99999999;
+    float ymmin = 99999999;
 
     auto update_bounds = [&](const cv::Point& p)
     {
@@ -88,8 +88,8 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         if (p.x < xmin) xmin = p.x;
         if (p.y > ymax) ymax = p.y;
         if (p.y < ymin) ymin = p.y;
-        Real yp = xy2yp(p.x, p.y);
-        Real ym = xy2ym(p.x, p.y);
+        float yp = xy2yp(p.x, p.y);
+        float ym = xy2ym(p.x, p.y);
         if (yp > ypmax) ypmax = yp;
         if (yp < ypmin) ypmin = yp;
         if (ym > ymmax) ymmax = ym;
@@ -97,8 +97,8 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
     };
 
     int area = 0;
-    Real cx = 0;
-    Real cy = 0;
+    float cx = 0;
+    float cy = 0;
 
     auto step_forward = [&]()
     {
@@ -181,8 +181,8 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         // We are done when we arrive at start again.
         if ( p == p1 )
         {
-            Real label_size[8] = {xmin, xmax, ymin, ymax, ypmin, ypmax, ymmin, ymmax};
-            return Label(cx/(3*area), cy/(3*area), area/2, label_size);
+            cv::Vec<float, 8> label_size = {xmin, xmax, ymin, ymax, ypmin, ypmax, ymmin, ymmax};
+            return Label(cv::Point2f(cx/(3*area), cy/(3*area)), area/2, label_size);
         }
     }
 }
@@ -240,7 +240,7 @@ std::vector<Label> createlabels(cv::Size size, EdgeFunctionType& edge_function)
                 // && label.qmax > label.quality[3]
             {
                 labels.push_back(label);
-                std::vector<Vec2r> neighbors = label.guessneighbors();
+                std::vector<cv::Point> neighbors = label.guessneighbors();
                 for (const auto& vec : neighbors)
                 {
                     queue.push_back(cv::Point(vec.x, vec.y));

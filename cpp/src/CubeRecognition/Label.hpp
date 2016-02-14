@@ -2,11 +2,11 @@
 // They are classified based on what coordinate system gives the tightest bounding box.
 //
 //                                     .*.
-//    typ_x: (x, ym)                .*  U  *.
-//    typ_y: (x, yp)              *.   (z)   .*      .-----.
-//    typ_z: (yp, ym)             |  *.   .*  |      | (s) |
-//    typ_s: (x, y)               |  F  *  R  |      *-----*
-//                                *.(x) | (y).*
+//    type_f: (x, ym)               .*     *.
+//    type_r: (x, yp)             *.    U    .*      .-----.
+//    type_u: (yp, ym)            |  *.   .*  |      |  s  |
+//    type_s: (x, y)              |  F  *  R  |      *-----*
+//                                *.    |    .*
 //                                   *. | .*
 //                                      *
 // typ_s (square) is not used, those candidates are discarded.
@@ -25,10 +25,11 @@
 
 #pragma once
 
+#include <opencv2/core/mat.hpp>
+
 #include <vector>
 
 #include "Settings.hpp"
-#include "VectorMath.hpp"
 
 template <typename T>
 T xy2yp(T x, T y) {
@@ -66,17 +67,19 @@ T ypym2area(T yp,T ym) {
 }
 
 struct Label {
-    Real x;
-    Real y;
-    Real area;
-    Real size[8];
+    cv::Point2f center;
+    cv::Vec<float, 8> size;
+    float area;
     int type;
-    Real qmax;
+    float qmax;
     bool used_in_grid;
-    Vec2r native;
+    cv::Point2f native;
+    cv::Rect2f native_rect;
 
-    Label(Real x, Real y, Real area, Real size[8]);
-    std::vector<Vec2r> guessneighbors();
-    Vec2r native2xy(Real nx, Real ny) const;
-    Vec2r xy2native(Real x, Real y) const;
+    Label(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size);
+    std::vector<cv::Point> guessneighbors();
+    cv::Point2f native2xy(float nx, float ny) const;
+    cv::Point2f xy2native(float x, float y) const;
 };
+
+bool are_neighbors(const Label& a, const Label& b);

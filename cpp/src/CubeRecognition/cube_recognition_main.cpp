@@ -11,10 +11,10 @@
 
 void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 {
-    Vec2r np = label.xy2native(label.x, label.y);
+    cv::Point2f np = label.native;
 
     // Find native size
-    Real nsize[4][4] = {
+    float nsize[4][4] = {
         // Type 0: 0167 x,ym
         {label.size[0], label.size[1], label.size[6], label.size[7]},
         // Type 1: 0145 x,yp
@@ -25,12 +25,12 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
         {label.size[0], label.size[1],label.size[2], label.size[3]},
     };
 
-    Real snx = nsize[label.type][1] - nsize[label.type][0];
-    Real sny = nsize[label.type][3] - nsize[label.type][2];
-    Real snx2 = snx*0.5;
-    Real sny2 = sny*0.5;
+    float snx = nsize[label.type][1] - nsize[label.type][0];
+    float sny = nsize[label.type][3] - nsize[label.type][2];
+    float snx2 = snx*0.5;
+    float sny2 = sny*0.5;
 
-    std::vector<Vec2r> corners = {
+    std::vector<cv::Point2f> corners = {
         label.native2xy(np.x - snx2, np.y - sny2),
         label.native2xy(np.x - snx2, np.y + sny2),
         label.native2xy(np.x + snx2, np.y + sny2),
