@@ -27,7 +27,7 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
 {
     cv::Point p = p0;
 
-    int black = 0;
+    const int black = 0;
 
     // Walk until we find an edge or exit the image.
     // Walk towards the closest border left or right.
@@ -37,19 +37,22 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         d.x = -d.x;
 
     Real zerosize[8] = {0,0,0,0,0,0,0,0,};
-    Label null(0,0,0,zerosize);
+    Label bad_label(0,0,0,zerosize);
+
+    auto is_inside_image = [&](const cv::Point& p)
+    {
+        return p.x > 0 && p.y > 0 && p.x + 1 < size.width && p.y + 1 < size.height;
+    };
+
+    if (!is_inside_image(p))
+        return bad_label;
 
     while (true)
     {
-        // Check bounds
-        if (p.x < 0 || p.x+2 >= size.width || p.y < 0 || p.y+2 >= size.height)
-            return Label(0,0,0,zerosize);
-
         // Abort if this label is found already
         if (canvas(p) != black)
         {
-            //debugstring .= '<br>aborting search because of not black';
-            return null;
+            return bad_label;
         }
 
         // Continue until we find an edge
@@ -58,11 +61,14 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
 
         // Step forward
         p += d;
+
+        if (!is_inside_image(p))
+            return bad_label;
     }
 
     // Abort if we are on an edge at the start
     if (p.x == p0.x)
-        return null;
+        return bad_label;
 
     // Turn right
     d = cv::Point(-d.y, d.x);
@@ -100,8 +106,8 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         p += d;
 
         // Check bounds
-        if (p.x - 1 < 0 || p.x +1 >= size.width || p.y - 1 < 0 || p.y + 1 >= size.height)
-            return null;
+        if (!is_inside_image(p))
+            return false;
 
         // Calculate area and centroid (center of mass)
         //         x1*y2     -   y1*x2
@@ -115,6 +121,7 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
 
         // Update bounds
         update_bounds(p);
+        return true;
     };
 
     // Mark as discovered
@@ -156,11 +163,13 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         {
             // Turn left
             d = cv::Point(d.y, -d.x);
-            step_forward();
+            if (!step_forward())
+                return bad_label;
         }
         else if (!edge_function(p, front))
         {
-            step_forward();
+            if (!step_forward())
+                return bad_label;
         }
         else
         {
