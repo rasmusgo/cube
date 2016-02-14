@@ -3,6 +3,10 @@
 Label::Label(Real x, Real y, Real area, Real size[8]) :
     x(x), y(y), area(area), used_in_grid(false)
 {
+    for (int i = 0; i < 8; ++i)
+    {
+        this->size[i] = size[i];
+    }
     Real sx = size[1] - size[0] + 1;
     Real sy = size[3] - size[2] + 1;
     Real syp = size[5] - size[4] + 1;
