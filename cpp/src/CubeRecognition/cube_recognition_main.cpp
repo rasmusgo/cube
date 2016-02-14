@@ -48,6 +48,24 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 int main()
 {
     cv::Mat3b img = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
+    struct WinPos
+    {
+        std::string name;
+        int x;
+        int y;
+    };
+    std::vector<WinPos> window_positions = {
+        {"labels", 0, 0},
+        {"debug labels", img.cols + 10, 0},
+        {"F", 0, img.rows},
+        {"R", img.cols / 3, img.rows},
+        {"U", 2 * img.cols / 3, img.rows},
+    };
+    for (auto w : window_positions)
+    {
+        cv::namedWindow(w.name);
+        cv::moveWindow(w.name, w.x, w.y);
+    }
 
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
