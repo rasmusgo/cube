@@ -4,10 +4,10 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "Image.hpp"
-
-#include "Label.hpp"
+#include "ConnectLabels.hpp"
 #include "CreateLabels.hpp"
+#include "Image.hpp"
+#include "Label.hpp"
 
 void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 {
@@ -66,6 +66,10 @@ int main()
             drawLabel(canvas, label, cv::Scalar(255, 255, 255));
         }
         cv::imshow("labels", canvas);
+
+        // Connect labels with each other in order to associate them.
+        connectLabels(labels);
+
         cv::waitKey();
     }
 
