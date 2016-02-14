@@ -1,10 +1,10 @@
 #pragma once
 
-#include "CImg.h"
-using namespace cimg_library;
+#include <opencv2/core/mat.hpp>
 
 #include "Label.hpp"
 
+using EdgeFunctionType = std::function<bool(const cv::Point&, const cv::Point&)>;
+
 typedef float DT;
-std::vector<Label> createlabels(CImg<DT> &im_out, const CImg<float> &im, float threshold);
-Label findborder(CImg<DT> &im_out, const CImg<float> &im, int x, int y, float threshold, DT markupcolor, bool secondarytrace = false);
+std::vector<Label> createlabels(cv::Size size, EdgeFunctionType& edge_function);
