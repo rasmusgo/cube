@@ -77,6 +77,6 @@ struct Label {
 
     Label(Real x, Real y, Real area, Real size[8]);
     std::vector<Vec2r> guessneighbors();
-    Vec2r native2xy(Real nx, Real ny);
-    Vec2r xy2native(Real x, Real y);
+    Vec2r native2xy(Real nx, Real ny) const;
+    Vec2r xy2native(Real x, Real y) const;
 };

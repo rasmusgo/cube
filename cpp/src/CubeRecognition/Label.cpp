@@ -72,7 +72,7 @@ std::vector<Vec2r> Label::guessneighbors() {
     return guesses;
 }
 
-Vec2r Label::native2xy(Real nx, Real ny) {
+Vec2r Label::native2xy(Real nx, Real ny) const {
     if (this->type == 0) {
         // x,ym
         return Vec2r(nx, xym2y(nx, ny));
@@ -88,7 +88,7 @@ Vec2r Label::native2xy(Real nx, Real ny) {
     }
 }
 
-Vec2r Label::xy2native(Real x, Real y) {
+Vec2r Label::xy2native(Real x, Real y) const {
     if (this->type == 0) {
         // x,ym
         return Vec2r(x, xy2ym(x, y));
