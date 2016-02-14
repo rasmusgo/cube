@@ -47,7 +47,7 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 
 int main()
 {
-    cv::Mat3b img = cv::imread("cube_0b.png", cv::IMREAD_COLOR);
+    cv::Mat3b img = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
