@@ -78,7 +78,7 @@ int main()
         printf("Threshold: %d, Num labels: %lu\n", threshold, labels.size());
         fflush(stdout);
 
-        cv::Mat3b canvas(img.size(), cv::Vec3b(0,0,0));
+        cv::Mat3b canvas = img * 0.25f;
         for (auto label : labels)
         {
             drawLabel(canvas, label, cv::Scalar(255, 255, 255));
