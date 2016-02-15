@@ -86,7 +86,12 @@ int main()
         cv::imshow("labels", canvas);
 
         // Connect labels with each other in order to associate them.
-        connectLabels(labels);
+        std::vector<std::vector<Label>> grouped_labels;
+        std::vector<std::vector<cv::Point2f>> spatial_indices;
+
+        std::tie(grouped_labels, spatial_indices) = connectLabels(labels);
+
+        solveCamera(grouped_labels, spatial_indices, img.size());
 
         cv::waitKey();
     }
