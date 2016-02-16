@@ -21,3 +21,5 @@ Camera solveCamera(
     const std::vector<std::vector<Label>>& grouped_labels,
     const std::vector<std::vector<cv::Point2f>>& spatial_indices,
     const cv::Size& image_size);
+
+std::vector<cv::Point2f> projectCube(const Camera& cam);

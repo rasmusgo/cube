@@ -84,7 +84,6 @@ int main()
         {
             drawLabel(canvas, label, cv::Scalar(255, 255, 255));
         }
-        cv::imshow("labels", canvas);
 
         // Connect labels with each other in order to associate them.
         std::vector<std::vector<Label>> grouped_labels;
@@ -94,6 +93,14 @@ int main()
 
         Camera cam = solveCamera(grouped_labels, spatial_indices, img.size());
 
+        std::vector<cv::Point2f> points2d = projectCube(cam);
+
+        for (const auto& p :points2d)
+        {
+            cv::circle(canvas, p, 5, cv::Scalar(255, 255, 255));
+        }
+
+        cv::imshow("labels", canvas);
         cv::waitKey();
     }
 
