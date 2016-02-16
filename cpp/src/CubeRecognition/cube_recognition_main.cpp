@@ -49,6 +49,8 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 int main()
 {
     cv::Mat3b img = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
+    cv::Rect img_rect(cv::Point(0,0), img.size());
+
     struct WinPos
     {
         std::string name;
@@ -95,8 +97,15 @@ int main()
 
         std::vector<cv::Point2f> points2d = projectCube(cam);
 
+        std::vector<cv::Scalar> label_colors;
         for (const auto& p :points2d)
         {
+            if (img_rect.contains(p))
+            {
+                cv::Scalar color = img(p);
+                cv::circle(canvas, p, 5, color, cv::FILLED);
+                label_colors.push_back(color);
+            }
             cv::circle(canvas, p, 5, cv::Scalar(255, 255, 255));
         }
 
