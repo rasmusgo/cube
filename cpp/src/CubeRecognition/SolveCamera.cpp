@@ -84,15 +84,14 @@ Camera solveCamera(
 std::vector<cv::Point2f> projectCube(const Camera& cam)
 {
     // Generate 3D points.
-    const float spatial_index[] = {-1.f, 0.f, 1.f};
     std::vector<cv::Point3f> points3d;
     for (int side = 0; side < 3; ++side)
     {
-        for (int i = 0; i < 3; ++i)
+        for (int y = -1; y <= 1; ++y)
         {
-            for (int j = 0; j < 3; ++j)
+            for (int x = -1; x <= 1; ++x)
             {
-                points3d.push_back(idTo3d(side, spatial_index[i], spatial_index[j]));
+                points3d.push_back(idTo3d(side, x, y));
             }
         }
     }
