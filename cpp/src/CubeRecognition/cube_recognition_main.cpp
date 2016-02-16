@@ -46,11 +46,8 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
     cv::polylines(canvas, cv_corners, true, color, 1, cv::LINE_AA, 8);
 }
 
-int main()
+std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, double threshold)
 {
-    cv::Mat3b img = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
-    cv::Rect img_rect(cv::Point(0,0), img.size());
-
     struct WinPos
     {
         std::string name;
@@ -70,46 +67,90 @@ int main()
         cv::moveWindow(w.name, w.x, w.y);
     }
 
+    EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
+    {
+        return cv::norm(img(a), img(b)) > threshold;
+    };
+
+    std::vector<Label> labels = createlabels(img.size(), edge_function);
+
+    printf("Num labels: %lu\n", labels.size());
+    fflush(stdout);
+
+    cv::Mat3b canvas = img * 0.25f;
+    for (auto label : labels)
+    {
+        drawLabel(canvas, label, cv::Scalar(255, 255, 255));
+    }
+
+    // Connect labels with each other in order to associate them.
+    std::vector<std::vector<Label>> grouped_labels;
+    std::vector<std::vector<cv::Point2f>> spatial_indices;
+
+    std::tie(grouped_labels, spatial_indices) = connectLabels(labels);
+
+    Camera cam;
+    try
+    {
+        cam = solveCamera(grouped_labels, spatial_indices, img.size());
+    }
+    catch (cv::Exception e)
+    {
+        return {};
+    }
+
+    std::vector<cv::Point2f> points2d = projectCube(cam);
+
+    std::vector<cv::Scalar> label_colors;
+    cv::Rect img_rect(cv::Point(0,0), img.size());
+    for (const auto& p :points2d)
+    {
+        if (img_rect.contains(p))
+        {
+            cv::Scalar color = img(p);
+            cv::circle(canvas, p, 5, color, cv::FILLED);
+            label_colors.push_back(color);
+        }
+        cv::circle(canvas, p, 5, cv::Scalar(255, 255, 255));
+    }
+
+    printf("Num colors: %lu\n", label_colors.size());
+    fflush(stdout);
+
+    cv::imshow("labels", canvas);
+
+    if (label_colors.size() == 9*3)
+    {
+        return label_colors;
+    }
+    else
+    {
+        return {};
+    }
+}
+
+int main()
+{
+    cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
+    cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
+
+    std::vector<std::vector<cv::Scalar>> candidate_colors_top;
+    std::vector<std::vector<cv::Scalar>> candidate_colors_bottom;
+
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
-        EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
-        {
-            return cv::norm(img(a), img(b)) > threshold;
-        };
-        std::vector<Label> labels = createlabels(img.size(), edge_function);
+        std::vector<cv::Scalar> colors_top    = getLabelColors(img_top, threshold);
+        std::vector<cv::Scalar> colors_bottom = getLabelColors(img_bottom, threshold);
 
-        printf("Threshold: %d, Num labels: %lu\n", threshold, labels.size());
-        fflush(stdout);
-
-        cv::Mat3b canvas = img * 0.25f;
-        for (auto label : labels)
+        if (!colors_top.empty())
         {
-            drawLabel(canvas, label, cv::Scalar(255, 255, 255));
+            candidate_colors_top.push_back(colors_top);
+        }
+        if (!colors_bottom.empty())
+        {
+            candidate_colors_bottom.push_back(colors_bottom);
         }
 
-        // Connect labels with each other in order to associate them.
-        std::vector<std::vector<Label>> grouped_labels;
-        std::vector<std::vector<cv::Point2f>> spatial_indices;
-
-        std::tie(grouped_labels, spatial_indices) = connectLabels(labels);
-
-        Camera cam = solveCamera(grouped_labels, spatial_indices, img.size());
-
-        std::vector<cv::Point2f> points2d = projectCube(cam);
-
-        std::vector<cv::Scalar> label_colors;
-        for (const auto& p :points2d)
-        {
-            if (img_rect.contains(p))
-            {
-                cv::Scalar color = img(p);
-                cv::circle(canvas, p, 5, color, cv::FILLED);
-                label_colors.push_back(color);
-            }
-            cv::circle(canvas, p, 5, cv::Scalar(255, 255, 255));
-        }
-
-        cv::imshow("labels", canvas);
         cv::waitKey();
     }
 
