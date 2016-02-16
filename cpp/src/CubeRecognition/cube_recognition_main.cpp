@@ -134,8 +134,7 @@ int main()
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
-    std::vector<std::vector<cv::Scalar>> candidate_colors_top;
-    std::vector<std::vector<cv::Scalar>> candidate_colors_bottom;
+    std::vector<std::vector<cv::Scalar>> candidate_colors(6*9);
 
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
@@ -144,15 +143,66 @@ int main()
 
         if (!colors_top.empty())
         {
-            candidate_colors_top.push_back(colors_top);
+            for (int i = 0; i < 3*9; ++i)
+            {
+                candidate_colors[i].push_back(colors_top[i]);
+            }
         }
         if (!colors_bottom.empty())
         {
-            candidate_colors_bottom.push_back(colors_bottom);
+            for (int i = 0; i < 3*9; ++i)
+            {
+                candidate_colors[i + 3*9].push_back(colors_bottom[i]);
+            }
         }
-
-        cv::waitKey();
     }
 
+    std::vector<cv::Scalar> median_colors;
+
+    for (const auto& colors : candidate_colors)
+    {
+        assert(!colors.empty());
+
+        std::vector<double> reds;
+        std::vector<double> greens;
+        std::vector<double> blues;
+        for (const auto& color : colors)
+        {
+            reds.push_back(color[2]);
+            greens.push_back(color[1]);
+            blues.push_back(color[0]);
+        }
+
+        size_t mid = colors.size() / 2;
+        std::nth_element(reds.begin(), reds.begin() + mid, reds.end());
+        std::nth_element(greens.begin(), greens.begin() + mid, greens.end());
+        std::nth_element(blues.begin(), blues.begin() + mid, blues.end());
+
+        median_colors.emplace_back(blues[mid], greens[mid], reds[mid]);
+    }
+
+    cv::Mat3b canvas(cv::Size(20 * 3.1 * 6, 20 * 3 * 10), cv::Vec3b(0,0,0));
+
+    for (int i = 0; i < 6*9; ++i)
+    {
+        int side = i / 9;
+        int row = (i % 9) / 3;
+        int col = i % 3;
+
+        cv::Rect rect(cv::Point(20 * (side * 3.1 + col), 20 * row), cv::Size(20,20));
+        cv::rectangle(canvas, rect, median_colors[i], cv::FILLED);
+        cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
+
+        int cube = 0;
+        for (cv::Scalar color : candidate_colors[i])
+        {
+            cv::Rect rect(cv::Point(20 * (side * 3.1 + col), 20 * (row + 4 + 3.1 * cube)), cv::Size(20,20));
+            cv::rectangle(canvas, rect, color, cv::FILLED);
+            cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
+            ++cube;
+        }
+    }
+    cv::imshow("colors", canvas);
+    cv::waitKey();
     return 0;
 }
