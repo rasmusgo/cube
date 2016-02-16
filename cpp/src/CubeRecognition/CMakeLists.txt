@@ -8,6 +8,8 @@ add_executable(CubeRecognition
     Label.cpp
     Label.hpp
     Settings.hpp
+    SolveCamera.cpp
+    SolveCamera.hpp
     VectorMath.hpp
 )
 

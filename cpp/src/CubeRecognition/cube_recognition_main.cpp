@@ -8,6 +8,7 @@
 #include "CreateLabels.hpp"
 #include "Image.hpp"
 #include "Label.hpp"
+#include "SolveCamera.hpp"
 
 void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 {
@@ -91,7 +92,7 @@ int main()
 
         std::tie(grouped_labels, spatial_indices) = connectLabels(labels);
 
-        solveCamera(grouped_labels, spatial_indices, img.size());
+        Camera cam = solveCamera(grouped_labels, spatial_indices, img.size());
 
         cv::waitKey();
     }
