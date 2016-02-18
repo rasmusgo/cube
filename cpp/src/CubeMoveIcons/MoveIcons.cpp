@@ -23,7 +23,7 @@ void bend(float &x, float &y, int size)
 
     float a = ( y / size - 0.5 ) * M_PI_2;
     float d = ( x / size + 0.5 );
-    x = -cos(a)*d*size + size*0.925;
+    x = -cos(a)*d*size + size*0.825;
     y = sin(a)*d*size + size*0.5;
 }
 
@@ -62,9 +62,9 @@ int main()
 
     int arrowsize = 100;
     int arrowspacing = 150;
-    int margin_x = 120;
-    int margin_y = 50;
-    int length = 500;
+    int margin_x = 110;
+    int margin_y = 100;
+    int length = 550;
     int linewidth = 30;
     int height = margin_y*2 + length;
     int width = margin_x*2 + linewidth;
