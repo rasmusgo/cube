@@ -98,12 +98,12 @@ cv::Mat3b drawMoveSequence(const std::string& solution)
     {
         if (move_symbols.count(word))
         {
-            std::cout << "Found word: `" << word << "`" << std::endl;
             sequence_symbols.push_back(move_symbols[word]);
         }
         else
         {
-            std::cout << "Failed to find word: `" << word << "`" << std::endl;
+            printf("Failed to find word: `%s`\n", word.c_str());
+            fflush(stdout);
         }
     }
 
