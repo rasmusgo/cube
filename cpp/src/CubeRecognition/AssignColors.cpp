@@ -174,7 +174,8 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
 
     std::sort(pair_costs.begin(), pair_costs.end());
 
-    cv::Mat3b canvas(cv::Size(2000, 50), cv::Vec3b(0,0,0));
+    // There will be 8 merges per color times 6 colors. 8*6*25 = 1200
+    cv::Mat3b canvas(cv::Size(1200, 50), cv::Vec3b(0,0,0));
     size_t merge_count = 0;
 
     GroupMerger groups(colors.size());
