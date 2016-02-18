@@ -253,3 +253,47 @@ std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edg
     cv::imshow("debug labels", colored_canvas);
     return labels;
 }
+
+void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& color)
+{
+    cv::Point2f np = label.native;
+
+    // Find native size
+    float nsize[4][4] = {
+        // Type 0: 0167 x,ym
+        {label.size[0], label.size[1], label.size[6], label.size[7]},
+        // Type 1: 0145 x,yp
+        {label.size[0], label.size[1], label.size[4], label.size[5]},
+        // Type 2: 4567 yp,ym
+        {label.size[4], label.size[5], label.size[6], label.size[7]},
+        // Type 3 (Square): 0123 x,y
+        {label.size[0], label.size[1],label.size[2], label.size[3]},
+    };
+
+    float snx = nsize[label.type][1] - nsize[label.type][0];
+    float sny = nsize[label.type][3] - nsize[label.type][2];
+    float snx2 = snx*0.5;
+    float sny2 = sny*0.5;
+
+    std::vector<cv::Point2f> corners = {
+        label.native2xy(np.x - snx2, np.y - sny2),
+        label.native2xy(np.x - snx2, np.y + sny2),
+        label.native2xy(np.x + snx2, np.y + sny2),
+        label.native2xy(np.x + snx2, np.y - sny2),
+    };
+
+    std::vector<cv::Point> cv_corners;
+    for (auto corner : corners)
+    {
+        cv_corners.emplace_back(corner.x * 255, corner.y * 255);
+    }
+    cv::polylines(canvas, cv_corners, true, color, 1, cv::LINE_AA, 8);
+}
+
+void drawLabels(cv::Mat& canvas, const std::vector<LabelContour>& labels, const cv::Scalar& color)
+{
+    for (auto label : labels)
+    {
+        drawLabel(canvas, label, cv::Scalar(255, 255, 255));
+    }
+}

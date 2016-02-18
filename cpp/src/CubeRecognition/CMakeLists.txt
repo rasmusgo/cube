@@ -6,6 +6,8 @@ add_executable(CubeRecognition
     cube_recognition_main.cpp
     FindLabelContours.cpp
     FindLabelContours.hpp
+    FindLabels.cpp
+    FindLabels.hpp
     Image.hpp
     LabelContour.cpp
     LabelContour.hpp
