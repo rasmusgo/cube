@@ -22,6 +22,10 @@ void setupWindows(const cv::Size& img_size)
     std::vector<WinPos> window_positions = {
         {"detected labels", 0, 0},
         {"debug labels", img_size.width + 10, 0},
+        {"top", 0, 0},
+        {"bottom", img_size.width + 10, 0},
+        {"merges", 0, img_size.height},
+        {"colors", img_size.width + 25, img_size.height + 75},
         {"F", 0, img_size.height},
         {"R", img_size.width / 3, img_size.height},
         {"U", 2 * img_size.width / 3, img_size.height},
