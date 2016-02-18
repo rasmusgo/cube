@@ -102,7 +102,7 @@ int main()
 
         cv::Point text_bl(25 * (side * 3.1 + col) + 2, 25 * row + 15);
         cv::putText(canvas, generate_text(i), text_bl,
-                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
     }
 
     cv::imshow("colors", canvas);
