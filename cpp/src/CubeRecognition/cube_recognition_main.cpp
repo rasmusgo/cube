@@ -4,6 +4,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "AssignColors.hpp"
 #include "ConnectLabels.hpp"
 #include "CreateLabels.hpp"
 #include "Image.hpp"
@@ -206,17 +207,39 @@ int main()
     std::vector<cv::Scalar> colors_top    = getLabelColors(img_top, points_top);
     std::vector<cv::Scalar> colors_bottom = getLabelColors(img_bottom, points_bottom);
 
+    std::vector<cv::Scalar> label_colors;
+    cv::hconcat(colors_top, colors_bottom, label_colors);
+    std::vector<size_t> label_sides = assignColorsToSides(label_colors);
+
     cv::Mat3b canvas_top = img_top * 0.25f;
     cv::Mat3b canvas_bottom = img_bottom * 0.25f;
 
-    drawLabelColors(canvas_top, points_top, colors_top);
-    drawLabelColors(canvas_bottom, points_bottom, colors_bottom);
+    const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
+
+    auto generate_text = [&](int i)
+    {
+        std::stringstream ss;
+        //ss << idToCubie(i);
+        ss << side_names[label_sides[i]];
+        return ss.str();
+    };
+
+    std::vector<std::string> texts_top;
+    for (int i = 0; i < 3*9; ++i)
+    {
+        texts_top.push_back(generate_text(i));
+    }
+    std::vector<std::string> texts_bottom;
+    for (int i = 3*9; i < 6*9; ++i)
+    {
+        texts_bottom.push_back(generate_text(i));
+    }
+
+    drawLabelInfo(canvas_top, points_top, texts_top, cv::Scalar(255, 255, 255), 1.0);
+    drawLabelInfo(canvas_bottom, points_bottom, texts_bottom, cv::Scalar(255, 255, 255), 1.0);
 
     cv::imshow("top", canvas_top);
     cv::imshow("bottom", canvas_bottom);
-
-    std::vector<cv::Scalar> label_colors;
-    cv::hconcat(colors_top, colors_bottom, label_colors);
 
     cv::Mat3b canvas(cv::Size(25 * 3.1 * 6, 25 * 3), cv::Vec3b(0,0,0));
 
@@ -229,6 +252,17 @@ int main()
         cv::Rect rect(cv::Point(25 * (side * 3.1 + col), 25 * row), cv::Size(25,25));
         cv::rectangle(canvas, rect, label_colors[i], cv::FILLED);
         cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
+    }
+
+    for (int i = 0; i < 6*9; ++i)
+    {
+        int side = i / 9;
+        int row = (i % 9) / 3;
+        int col = i % 3;
+
+        cv::Point text_bl(25 * (side * 3.1 + col) + 2, 25 * row + 15);
+        cv::putText(canvas, generate_text(i), text_bl,
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
     }
 
     cv::imshow("colors", canvas);

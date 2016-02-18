@@ -1,4 +1,6 @@
 add_executable(CubeRecognition
+    AssignColors.cpp
+    AssignColors.hpp
     ConnectLabels.cpp
     ConnectLabels.hpp
     CreateLabels.cpp
