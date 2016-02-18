@@ -5,10 +5,10 @@
 #include <opencv2/opencv.hpp>
 
 #include "AssignColors.hpp"
-#include "ConnectLabels.hpp"
-#include "CreateLabels.hpp"
+#include "ConnectLabelContours.hpp"
+#include "FindLabelContours.hpp"
 #include "Image.hpp"
-#include "Label.hpp"
+#include "LabelContour.hpp"
 #include "SolveCamera.hpp"
 
 void setupWindows(const cv::Size& img_size)
@@ -37,7 +37,7 @@ void setupWindows(const cv::Size& img_size)
     }
 }
 
-void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
+void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& color)
 {
     cv::Point2f np = label.native;
 
@@ -73,14 +73,14 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
     cv::polylines(canvas, cv_corners, true, color, 1, cv::LINE_AA, 8);
 }
 
-std::vector<cv::Point2f> getLabelPositions(const cv::Mat3b img, double threshold)
+std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b img, double threshold)
 {
     EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
     {
         return cv::norm(img(a), img(b)) > threshold;
     };
 
-    std::vector<Label> labels = createlabels(img.size(), edge_function);
+    std::vector<LabelContour> labels = findLabelContours(img.size(), edge_function);
 
     printf("Num labels: %lu\n", labels.size());
     fflush(stdout);
@@ -93,10 +93,10 @@ std::vector<cv::Point2f> getLabelPositions(const cv::Mat3b img, double threshold
     cv::imshow("detected labels", canvas);
 
     // Connect labels with each other in order to associate them.
-    std::vector<std::vector<Label>> grouped_labels;
+    std::vector<std::vector<LabelContour>> grouped_labels;
     std::vector<std::vector<cv::Point2f>> spatial_indices;
 
-    std::tie(grouped_labels, spatial_indices) = connectLabels(labels);
+    std::tie(grouped_labels, spatial_indices) = connectLabelContours(labels);
 
     Camera cam;
     try
@@ -133,13 +133,13 @@ std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, const std::vector<cv
     }
 }
 
-std::vector<cv::Point2f> getLabelPositions(const cv::Mat3b& img)
+std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img)
 {
     std::vector<std::vector<cv::Point2f>> candidate_points(3*9);
 
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
-        std::vector<cv::Point2f> points_top = getLabelPositions(img, threshold);
+        std::vector<cv::Point2f> points_top = findLabelPositions(img, threshold);
 
         if (!points_top.empty())
         {
@@ -205,8 +205,8 @@ int main()
 
     setupWindows(img_bottom.size());
 
-    std::vector<cv::Point2f> points_top    = getLabelPositions(img_top);
-    std::vector<cv::Point2f> points_bottom = getLabelPositions(img_bottom);
+    std::vector<cv::Point2f> points_top    = findLabelPositions(img_top);
+    std::vector<cv::Point2f> points_bottom = findLabelPositions(img_bottom);
 
     std::vector<cv::Scalar> colors_top    = getLabelColors(img_top, points_top);
     std::vector<cv::Scalar> colors_bottom = getLabelColors(img_bottom, points_bottom);

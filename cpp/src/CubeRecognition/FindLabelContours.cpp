@@ -5,10 +5,10 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "CreateLabels.hpp"
+#include "FindLabelContours.hpp"
 
 /**
- * Findborder finds an edge and follows it around until the startposition is reached again.
+ * Finds an edge and follows it around until the startposition is reached again.
  *
  * Edges are defined as the crossing \a between two pixels.
  *
@@ -22,7 +22,7 @@
  *     │   │   │   │   │   │
  *     └───┴───┴───┴───┴───┘
  */
-Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& edge_function,
+LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& edge_function,
     cv::Mat1i& canvas, int markupcolor, bool secondarytrace)
 {
     cv::Point p = p0;
@@ -37,7 +37,7 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         d.x = -d.x;
 
     cv::Vec<float, 8> zerosize{0,0,0,0,0,0,0,0};
-    Label bad_label(cv::Point2f(0,0), 0.f, zerosize);
+    LabelContour bad_label(cv::Point2f(0,0), 0.f, zerosize);
 
     auto is_inside_image = [&](const cv::Point& p)
     {
@@ -182,7 +182,7 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
         if ( p == p1 )
         {
             cv::Vec<float, 8> label_size = {xmin, xmax, ymin, ymax, ypmin, ypmax, ymmin, ymmax};
-            return Label(cv::Point2f(cx/(3*area), cy/(3*area)), area/2, label_size);
+            return LabelContour(cv::Point2f(cx/(3*area), cy/(3*area)), area/2, label_size);
         }
     }
 }
@@ -190,11 +190,11 @@ Label findborder(const cv::Size& size, const cv::Point& p0, EdgeFunctionType& ed
 /**
  * Find all distinct areas, paint them and and measure them.
  */
-std::vector<Label> createlabels(cv::Size size, EdgeFunctionType& edge_function)
+std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edge_function)
 {
     float imagearea = size.area();
 
-    std::vector<Label> labels;
+    std::vector<LabelContour> labels;
 
     const int numcolors = 6*5;
     int colorarea[numcolors] = {
@@ -226,12 +226,12 @@ std::vector<Label> createlabels(cv::Size size, EdgeFunctionType& edge_function)
         p.x = floor(p.x);
         p.y = floor(p.y);
 
-        Label label = findborder(size, p, edge_function, canvas, colorarea[i], false);
+        LabelContour label = findLabelContour(size, p, edge_function, canvas, colorarea[i], false);
         i = (i + 1) % numcolors;
         if (label.area != 0 && label.area < minarea)
         {
             // if label is small, trace another direction
-            label = findborder(size, p, edge_function, canvas, colorarea[i], true);
+            label = findLabelContour(size, p, edge_function, canvas, colorarea[i], true);
             i = (i + 1) % numcolors;
         }
         if (label.area > 0)

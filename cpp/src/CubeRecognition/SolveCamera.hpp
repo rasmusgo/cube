@@ -5,7 +5,7 @@
 
 #include <opencv2/core/mat.hpp>
 
-#include "Label.hpp"
+#include "LabelContour.hpp"
 
 struct Camera
 {
@@ -18,7 +18,7 @@ struct Camera
 cv::Point3f idTo3d(int side, float id_x, float id_y);
 
 Camera solveCamera(
-    const std::vector<std::vector<Label>>& grouped_labels,
+    const std::vector<std::vector<LabelContour>>& grouped_labels,
     const std::vector<std::vector<cv::Point2f>>& spatial_indices,
     const cv::Size& image_size);
 

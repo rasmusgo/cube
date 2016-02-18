@@ -66,20 +66,19 @@ T ypym2area(T yp,T ym) {
     return (yp * ym) / (KP+KM);
 }
 
-struct Label {
+struct LabelContour {
     cv::Point2f center;
     cv::Vec<float, 8> size;
     float area;
     int type;
     float qmax;
-    bool used_in_grid;
     cv::Point2f native;
     cv::Rect2f native_rect;
 
-    Label(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size);
+    LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size);
     std::vector<cv::Point> guessneighbors();
     cv::Point2f native2xy(float nx, float ny) const;
     cv::Point2f xy2native(float x, float y) const;
 };
 
-bool are_neighbors(const Label& a, const Label& b);
+bool are_neighbors(const LabelContour& a, const LabelContour& b);

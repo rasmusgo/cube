@@ -7,7 +7,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "Label.hpp"
+#include "LabelContour.hpp"
 #include "SolveCamera.hpp"
 
 cv::Point3f idTo3d(int side, float id_x, float id_y)
@@ -30,7 +30,7 @@ cv::Point3f idTo3d(int side, float id_x, float id_y)
 }
 
 Camera solveCamera(
-    const std::vector<std::vector<Label>>& grouped_labels,
+    const std::vector<std::vector<LabelContour>>& grouped_labels,
     const std::vector<std::vector<cv::Point2f>>& spatial_indices,
     const cv::Size& image_size)
 {

@@ -1,14 +1,14 @@
 add_executable(CubeRecognition
     AssignColors.cpp
     AssignColors.hpp
-    ConnectLabels.cpp
-    ConnectLabels.hpp
-    CreateLabels.cpp
-    CreateLabels.hpp
+    ConnectLabelContours.cpp
+    ConnectLabelContours.hpp
     cube_recognition_main.cpp
+    FindLabelContours.cpp
+    FindLabelContours.hpp
     Image.hpp
-    Label.cpp
-    Label.hpp
+    LabelContour.cpp
+    LabelContour.hpp
     Settings.hpp
     SolveCamera.cpp
     SolveCamera.hpp

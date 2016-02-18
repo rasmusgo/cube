@@ -7,17 +7,17 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "ConnectLabels.hpp"
+#include "ConnectLabelContours.hpp"
 
 /**
  * Connect labels by associating neighbors in a connected components search.
  *
  * @return (grouped_labels, spatial_indices)
  */
-std::pair<std::vector<std::vector<Label>>, std::vector<std::vector<cv::Point2f>>>
-    connectLabels(const std::vector<Label>& labels)
+std::pair<std::vector<std::vector<LabelContour>>, std::vector<std::vector<cv::Point2f>>>
+    connectLabelContours(const std::vector<LabelContour>& labels)
 {
-    std::vector<std::vector<Label>> typed_labels(4);
+    std::vector<std::vector<LabelContour>> typed_labels(4);
     for (const auto& label : labels)
     {
         typed_labels[label.type].push_back(label);

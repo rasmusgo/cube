@@ -1,7 +1,7 @@
-#include "Label.hpp"
+#include "LabelContour.hpp"
 
-Label::Label(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size)
-    : center(center), size(size), area(area), used_in_grid(false)
+LabelContour::LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size)
+    : center(center), size(size), area(area)
 {
     float sx = size[1] - size[0] + 1;
     float sy = size[3] - size[2] + 1;
@@ -36,7 +36,7 @@ Label::Label(const cv::Point2f& center, float area, const cv::Vec<float, 8>& siz
 }
 
 // Give proposals on where neighbors can be found
-std::vector<cv::Point> Label::guessneighbors()
+std::vector<cv::Point> LabelContour::guessneighbors()
 {
     cv::Point2f np = this->native;
 
@@ -78,7 +78,7 @@ std::vector<cv::Point> Label::guessneighbors()
     return guesses;
 }
 
-cv::Point2f Label::native2xy(float nx, float ny) const
+cv::Point2f LabelContour::native2xy(float nx, float ny) const
 {
     if (this->type == 0) {
         // x,ym
@@ -95,7 +95,7 @@ cv::Point2f Label::native2xy(float nx, float ny) const
     }
 }
 
-cv::Point2f Label::xy2native(float x, float y) const
+cv::Point2f LabelContour::xy2native(float x, float y) const
 {
     if (this->type == 0) {
         // x,ym
@@ -112,7 +112,7 @@ cv::Point2f Label::xy2native(float x, float y) const
     }
 }
 
-bool are_neighbors(const Label& a, const Label& b)
+bool are_neighbors(const LabelContour& a, const LabelContour& b)
 {
     if (a.type != b.type)
         return false;
