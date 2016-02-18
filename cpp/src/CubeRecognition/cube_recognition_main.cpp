@@ -10,6 +10,28 @@
 #include "Label.hpp"
 #include "SolveCamera.hpp"
 
+void setupWindows(const cv::Size& img_size)
+{
+    struct WinPos
+    {
+        std::string name;
+        int x;
+        int y;
+    };
+    std::vector<WinPos> window_positions = {
+        {"detected labels", 0, 0},
+        {"debug labels", img_size.width + 10, 0},
+        {"F", 0, img_size.height},
+        {"R", img_size.width / 3, img_size.height},
+        {"U", 2 * img_size.width / 3, img_size.height},
+    };
+    for (auto w : window_positions)
+    {
+        cv::namedWindow(w.name);
+        cv::moveWindow(w.name, w.x, w.y);
+    }
+}
+
 void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
 {
     cv::Point2f np = label.native;
@@ -46,27 +68,8 @@ void drawLabel(cv::Mat& canvas, const Label& label, const cv::Scalar& color)
     cv::polylines(canvas, cv_corners, true, color, 1, cv::LINE_AA, 8);
 }
 
-std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, double threshold)
+std::vector<cv::Point2f> getLabelPositions(const cv::Mat3b img, double threshold)
 {
-    struct WinPos
-    {
-        std::string name;
-        int x;
-        int y;
-    };
-    std::vector<WinPos> window_positions = {
-        {"labels", 0, 0},
-        {"debug labels", img.cols + 10, 0},
-        {"F", 0, img.rows},
-        {"R", img.cols / 3, img.rows},
-        {"U", 2 * img.cols / 3, img.rows},
-    };
-    for (auto w : window_positions)
-    {
-        cv::namedWindow(w.name);
-        cv::moveWindow(w.name, w.x, w.y);
-    }
-
     EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
     {
         return cv::norm(img(a), img(b)) > threshold;
@@ -82,6 +85,7 @@ std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, double threshold)
     {
         drawLabel(canvas, label, cv::Scalar(255, 255, 255));
     }
+    cv::imshow("detected labels", canvas);
 
     // Connect labels with each other in order to associate them.
     std::vector<std::vector<Label>> grouped_labels;
@@ -94,30 +98,25 @@ std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, double threshold)
     {
         cam = solveCamera(grouped_labels, spatial_indices, img.size());
     }
-    catch (cv::Exception e)
+    catch (cv::Exception)
     {
         return {};
     }
 
-    std::vector<cv::Point2f> points2d = projectCube(cam);
+    return projectCube(cam);
+}
 
+std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, const std::vector<cv::Point2f>& points)
+{
     std::vector<cv::Scalar> label_colors;
     cv::Rect img_rect(cv::Point(0,0), img.size());
-    for (const auto& p :points2d)
+    for (const auto& p :points)
     {
         if (img_rect.contains(p))
         {
-            cv::Scalar color = img(p);
-            cv::circle(canvas, p, 5, color, cv::FILLED);
-            label_colors.push_back(color);
+            label_colors.push_back(img(p));
         }
-        cv::circle(canvas, p, 5, cv::Scalar(255, 255, 255));
     }
-
-    printf("Num colors: %lu\n", label_colors.size());
-    fflush(stdout);
-
-    cv::imshow("labels", canvas);
 
     if (label_colors.size() == 9*3)
     {
@@ -129,59 +128,97 @@ std::vector<cv::Scalar> getLabelColors(const cv::Mat3b img, double threshold)
     }
 }
 
+std::vector<cv::Point2f> getLabelPositions(const cv::Mat3b& img)
+{
+    std::vector<std::vector<cv::Point2f>> candidate_points(3*9);
+
+    for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
+    {
+        std::vector<cv::Point2f> points_top = getLabelPositions(img, threshold);
+
+        if (!points_top.empty())
+        {
+            for (int i = 0; i < 3*9; ++i)
+            {
+                candidate_points[i].push_back(points_top[i]);
+            }
+        }
+    }
+
+    std::vector<cv::Point2f> median_points;
+
+    for (const auto& points : candidate_points)
+    {
+        assert(!points.empty());
+
+        std::vector<float> px;
+        std::vector<double> py;
+        for (const auto& point : points)
+        {
+            px.push_back(point.x);
+            py.push_back(point.y);
+        }
+
+        size_t mid = points.size() / 2;
+        std::nth_element(px.begin(), px.begin() + mid, px.end());
+        std::nth_element(py.begin(), py.begin() + mid, py.end());
+
+        median_points.emplace_back(px[mid], py[mid]);
+    }
+
+    return median_points;
+}
+
+void drawLabelColors(cv::Mat3b& canvas,
+    const std::vector<cv::Point2f>& points, const std::vector<cv::Scalar>& colors)
+{
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        cv::circle(canvas, points[i], 5, colors[i], cv::FILLED);
+        cv::circle(canvas, points[i], 5, cv::Scalar(255, 255, 255));
+    }
+}
+
+void drawLabelInfo(cv::Mat3b& canvas,
+    const std::vector<cv::Point2f>& points,
+    const std::vector<std::string>& texts,
+    const cv::Scalar color,
+    double font_scale)
+{
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        cv::Size text_size = cv::getTextSize(texts[i], cv::FONT_HERSHEY_SIMPLEX, font_scale, 1, NULL);
+        cv::Point text_pos(points[i].x - text_size.width / 2, points[i].y + text_size.height / 2);
+        cv::putText(canvas, texts[i], text_pos, cv::FONT_HERSHEY_SIMPLEX, font_scale, color);
+    }
+}
+
 int main()
 {
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
-    std::vector<std::vector<cv::Scalar>> candidate_colors(6*9);
+    setupWindows(img_bottom.size());
 
-    for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
-    {
-        std::vector<cv::Scalar> colors_top    = getLabelColors(img_top, threshold);
-        std::vector<cv::Scalar> colors_bottom = getLabelColors(img_bottom, threshold);
+    std::vector<cv::Point2f> points_top    = getLabelPositions(img_top);
+    std::vector<cv::Point2f> points_bottom = getLabelPositions(img_bottom);
 
-        if (!colors_top.empty())
-        {
-            for (int i = 0; i < 3*9; ++i)
-            {
-                candidate_colors[i].push_back(colors_top[i]);
-            }
-        }
-        if (!colors_bottom.empty())
-        {
-            for (int i = 0; i < 3*9; ++i)
-            {
-                candidate_colors[i + 3*9].push_back(colors_bottom[i]);
-            }
-        }
-    }
+    std::vector<cv::Scalar> colors_top    = getLabelColors(img_top, points_top);
+    std::vector<cv::Scalar> colors_bottom = getLabelColors(img_bottom, points_bottom);
 
-    std::vector<cv::Scalar> median_colors;
+    cv::Mat3b canvas_top = img_top * 0.25f;
+    cv::Mat3b canvas_bottom = img_bottom * 0.25f;
 
-    for (const auto& colors : candidate_colors)
-    {
-        assert(!colors.empty());
+    drawLabelColors(canvas_top, points_top, colors_top);
+    drawLabelColors(canvas_bottom, points_bottom, colors_bottom);
 
-        std::vector<double> reds;
-        std::vector<double> greens;
-        std::vector<double> blues;
-        for (const auto& color : colors)
-        {
-            reds.push_back(color[2]);
-            greens.push_back(color[1]);
-            blues.push_back(color[0]);
-        }
+    cv::imshow("top", canvas_top);
+    cv::imshow("bottom", canvas_bottom);
 
-        size_t mid = colors.size() / 2;
-        std::nth_element(reds.begin(), reds.begin() + mid, reds.end());
-        std::nth_element(greens.begin(), greens.begin() + mid, greens.end());
-        std::nth_element(blues.begin(), blues.begin() + mid, blues.end());
+    std::vector<cv::Scalar> label_colors;
+    cv::hconcat(colors_top, colors_bottom, label_colors);
 
-        median_colors.emplace_back(blues[mid], greens[mid], reds[mid]);
-    }
-
-    cv::Mat3b canvas(cv::Size(20 * 3.1 * 6, 20 * 3 * 10), cv::Vec3b(0,0,0));
+    cv::Mat3b canvas(cv::Size(25 * 3.1 * 6, 25 * 3), cv::Vec3b(0,0,0));
 
     for (int i = 0; i < 6*9; ++i)
     {
@@ -189,19 +226,11 @@ int main()
         int row = (i % 9) / 3;
         int col = i % 3;
 
-        cv::Rect rect(cv::Point(20 * (side * 3.1 + col), 20 * row), cv::Size(20,20));
-        cv::rectangle(canvas, rect, median_colors[i], cv::FILLED);
+        cv::Rect rect(cv::Point(25 * (side * 3.1 + col), 25 * row), cv::Size(25,25));
+        cv::rectangle(canvas, rect, label_colors[i], cv::FILLED);
         cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
-
-        int cube = 0;
-        for (cv::Scalar color : candidate_colors[i])
-        {
-            cv::Rect rect(cv::Point(20 * (side * 3.1 + col), 20 * (row + 4 + 3.1 * cube)), cv::Size(20,20));
-            cv::rectangle(canvas, rect, color, cv::FILLED);
-            cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
-            ++cube;
-        }
     }
+
     cv::imshow("colors", canvas);
     cv::waitKey();
     return 0;
