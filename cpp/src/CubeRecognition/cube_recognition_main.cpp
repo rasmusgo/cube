@@ -105,6 +105,22 @@ int main()
             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
     }
 
+    std::vector<size_t> kociemba_order = {
+        18, 19, 20, 21, 22, 23, 24, 25, 26, // U
+         9, 10, 11, 12, 13, 14, 15, 16, 17, // R
+         0,  1,  2,  3,  4,  5,  6,  7,  8, // F
+        51, 48, 45, 52, 49, 46, 53, 50, 47, // D
+        35, 34, 33, 32, 31, 30, 29, 28, 27, // L
+        44, 43, 42, 41, 40, 39, 38, 37, 36, // B
+    };
+    std::stringstream ss;
+    for (size_t i : kociemba_order)
+    {
+        ss << side_names[label_sides[i]];
+    }
+    printf("Cube state: %s\n", ss.str().c_str());
+    fflush(stdout);
+
     cv::imshow("colors", canvas);
     cv::waitKey();
     return 0;
