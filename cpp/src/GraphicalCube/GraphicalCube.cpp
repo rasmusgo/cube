@@ -21,12 +21,12 @@ GraphicalCube::GraphicalCube() :
         faceRotations[i] = 0;
 
     static const float colors[6][3] = {
-            { 1, 1, 0 },
-            { 0, 1, 0 },
-            { 1, 0, 0 },
-            { 1, 1, 1 },
-            { 0, 0, 1 },
-            { 1, 0.5, 0 },
+        { 1, 1, 0 }, // yellow
+        { 1, 0, 0 }, // red
+        { 0, 0, 1 }, // blue
+        { 1, 1, 1 }, // white
+        { 1, 0.5, 0 }, // orange
+        { 0, 1, 0 }, // green
     };
 
     for (int i = 0; i < 6; ++i)
