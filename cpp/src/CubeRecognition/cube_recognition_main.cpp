@@ -4,6 +4,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <SolverLib/Search.hpp>
+
 #include "AssignColors.hpp"
 #include "FindLabels.hpp"
 #include "Image.hpp"
@@ -32,6 +34,82 @@ void setupWindows(const cv::Size& img_size)
         cv::namedWindow(w.name);
         cv::moveWindow(w.name, w.x, w.y);
     }
+}
+
+cv::Mat3b drawMoveSequence(const std::string& solution)
+{
+    std::stringstream ss(solution);
+    std::string word;
+
+    std::vector<std::vector<cv::Mat3b>> arrows = {
+        {
+            cv::imread("icons/move_F0.png"),
+            cv::imread("icons/move_F1.png"),
+            cv::imread("icons/move_F2.png"),
+            cv::imread("icons/move_F-1.png"),
+            cv::imread("icons/move_F-2.png"),
+        },
+        {
+            cv::imread("icons/move_R0.png"),
+            cv::imread("icons/move_R1.png"),
+            cv::imread("icons/move_R2.png"),
+            cv::imread("icons/move_R-1.png"),
+            cv::imread("icons/move_R-2.png"),
+        },
+        {
+            cv::imread("icons/move_U0.png"),
+            cv::imread("icons/move_U1.png"),
+            cv::imread("icons/move_U2.png"),
+            cv::imread("icons/move_U-1.png"),
+            cv::imread("icons/move_U-2.png"),
+        },
+    };
+
+    std::vector<std::string> side_names = {"F", "R", "U"};
+    std::map<std::string, cv::Mat3b> move_symbols;
+    for (int side = 0; side < 3; ++side)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            for (int j = 0; j < 4; ++j)
+            {
+                std::stringstream ss;
+                ss << side_names[side] << i << j;
+                cv::Mat3b img;
+                if (side == 0) // F
+                {
+                    cv::vconcat(std::vector<cv::Mat3b>{arrows[side][j], arrows[side][0], arrows[side][i]}, img);
+                }
+                else if (side == 1) // R
+                {
+                    cv::hconcat(std::vector<cv::Mat3b>{arrows[side][j], arrows[side][0], arrows[side][i]}, img);
+                }
+                else
+                {
+                    cv::vconcat(std::vector<cv::Mat3b>{arrows[side][i], arrows[side][0], arrows[side][j]}, img);
+                }
+                move_symbols[ss.str()] = img;
+            }
+        }
+    }
+
+    std::vector<cv::Mat3b> sequence_symbols;
+    while (ss >> word)
+    {
+        if (move_symbols.count(word))
+        {
+            std::cout << "Found word: `" << word << "`" << std::endl;
+            sequence_symbols.push_back(move_symbols[word]);
+        }
+        else
+        {
+            std::cout << "Failed to find word: `" << word << "`" << std::endl;
+        }
+    }
+
+    cv::Mat3b img;
+    cv::hconcat(sequence_symbols, img);
+    return img;
 }
 
 int main()
@@ -104,8 +182,9 @@ int main()
         cv::putText(canvas, generate_text(i), text_bl,
             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
     }
+    cv::imshow("colors", canvas);
 
-    std::vector<size_t> kociemba_order = {
+    const std::vector<size_t> kociemba_order = {
         18, 19, 20, 21, 22, 23, 24, 25, 26, // U
          9, 10, 11, 12, 13, 14, 15, 16, 17, // R
          0,  1,  2,  3,  4,  5,  6,  7,  8, // F
@@ -121,7 +200,14 @@ int main()
     printf("Cube state: %s\n", ss.str().c_str());
     fflush(stdout);
 
-    cv::imshow("colors", canvas);
+    twophase::Search search;
+    std::string solution = search.solution(ss.str(), 18, 15, false);
+    printf("Solution: %s\n", solution.c_str());
+    fflush(stdout);
+
+    cv::Mat3b solution_img = drawMoveSequence(solution);
+    cv::imshow("solution", solution_img);
+
     cv::waitKey();
     return 0;
 }

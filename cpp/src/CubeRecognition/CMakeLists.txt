@@ -18,5 +18,6 @@ add_executable(CubeRecognition
 )
 
 target_link_libraries(CubeRecognition
+    SolverLib
     ${OpenCV_LIBS}
 )
