@@ -5,7 +5,7 @@
 #include "LabelContour.hpp"
 
 std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img);
-std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img, double threshold);
+std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img, double threshold, bool visualize);
 
 std::vector<cv::Scalar> readLabelColors(const cv::Mat3b img, const std::vector<cv::Point2f>& points);
 

@@ -17,7 +17,7 @@ std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img)
 
     for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
     {
-        std::vector<cv::Point2f> points_top = findLabelPositions(img, threshold);
+        std::vector<cv::Point2f> points_top = findLabelPositions(img, threshold, false);
 
         if (!points_top.empty())
         {
@@ -52,27 +52,30 @@ std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img)
     return median_points;
 }
 
-std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img, double threshold)
+std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img, double threshold, bool visualize)
 {
     EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
     {
         return cv::norm(img(a), img(b)) > threshold;
     };
 
-    std::vector<LabelContour> labels = findLabelContours(img.size(), edge_function);
+    std::vector<LabelContour> labels = findLabelContours(img.size(), edge_function, visualize);
 
     printf("Num labels: %lu\n", labels.size());
     fflush(stdout);
 
-    cv::Mat3b canvas = img * 0.25f;
-    drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
-    cv::imshow("detected labels", canvas);
+    if (visualize)
+    {
+        cv::Mat3b canvas = img * 0.25f;
+        drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
+        cv::imshow("detected labels", canvas);
+    }
 
     // Connect labels with each other in order to associate them.
     std::vector<std::vector<LabelContour>> grouped_labels;
     std::vector<std::vector<cv::Point2f>> spatial_indices;
 
-    std::tie(grouped_labels, spatial_indices) = connectLabelContours(labels);
+    std::tie(grouped_labels, spatial_indices) = connectLabelContours(labels, visualize);
 
     Camera cam;
     try

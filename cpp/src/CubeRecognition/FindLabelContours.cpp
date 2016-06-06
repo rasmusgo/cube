@@ -190,7 +190,7 @@ LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFun
 /**
  * Find all distinct areas, paint them and and measure them.
  */
-std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edge_function)
+std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edge_function, bool visualize)
 {
     float imagearea = size.area();
 
@@ -249,8 +249,11 @@ std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edg
         }
     }
 
-    cv::Mat4b colored_canvas = cv::Mat(canvas.size(), CV_8UC4, canvas.data);
-    cv::imshow("debug labels", colored_canvas);
+    if (visualize)
+    {
+        cv::Mat4b colored_canvas = cv::Mat(canvas.size(), CV_8UC4, canvas.data);
+        cv::imshow("debug labels", colored_canvas);
+    }
     return labels;
 }
 
