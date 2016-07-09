@@ -113,8 +113,43 @@ cv::Mat3b drawMoveSequence(const std::string& solution)
     return img;
 }
 
+void recordVideoFrames()
+{
+    cv::VideoCapture cap;
+    if (cap.open(0))
+    {
+        for(;;)
+        {
+            cv::Mat frame;
+            cap >> frame;
+            if (frame.empty())
+            {
+                break; // end of video stream
+            }
+            cv::imshow("this is you, smile! :)", frame);
+            static int i = 0;
+            char buf[1024];
+            sprintf(buf, "frame%05d.png", i++);
+            cv::imwrite(buf, frame);
+            if (int key = cv::waitKey(1) & 255)
+            {
+                if (key == 27)
+                {
+                    break; // stop capturing by pressing ESC
+                }
+                if (key != 255)
+                {
+                    printf("Key: %d\n", key);
+                    fflush(stdout);
+                }
+            }
+        }
+    }
+}
+
 int main()
 {
+    //recordVideoFrames()
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
