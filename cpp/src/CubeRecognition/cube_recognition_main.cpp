@@ -10,6 +10,8 @@
 #include "FindLabels.hpp"
 #include "Image.hpp"
 
+const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
+
 void setupWindows(const cv::Size& img_size)
 {
     struct WinPos
@@ -113,6 +115,14 @@ cv::Mat3b drawMoveSequence(const std::string& solution)
     return img;
 }
 
+std::string generateText(int i, const std::vector<size_t> &label_sides)
+{
+    std::stringstream ss;
+    //ss << idToCubie(i);
+    ss << side_names[label_sides[i]];
+    return ss.str();
+}
+
 void recordVideoFrames()
 {
     cv::VideoCapture cap;
@@ -168,25 +178,15 @@ int main()
     cv::Mat3b canvas_top = img_top * 0.25f;
     cv::Mat3b canvas_bottom = img_bottom * 0.25f;
 
-    const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
-
-    auto generate_text = [&](int i)
-    {
-        std::stringstream ss;
-        //ss << idToCubie(i);
-        ss << side_names[label_sides[i]];
-        return ss.str();
-    };
-
     std::vector<std::string> texts_top;
     for (int i = 0; i < 3*9; ++i)
     {
-        texts_top.push_back(generate_text(i));
+        texts_top.push_back(generateText(i, label_sides));
     }
     std::vector<std::string> texts_bottom;
     for (int i = 3*9; i < 6*9; ++i)
     {
-        texts_bottom.push_back(generate_text(i));
+        texts_bottom.push_back(generateText(i, label_sides));
     }
 
     drawLabelInfo(canvas_top, points_top, texts_top, cv::Scalar(255, 255, 255), 1.0);
@@ -215,7 +215,7 @@ int main()
         int col = i % 3;
 
         cv::Point text_bl(25 * (side * 3.1 + col) + 2, 25 * row + 15);
-        cv::putText(canvas, generate_text(i), text_bl,
+        cv::putText(canvas, generateText(i, label_sides), text_bl,
             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
     }
     cv::imshow("colors", canvas);
