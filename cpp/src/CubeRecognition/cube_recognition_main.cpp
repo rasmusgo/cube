@@ -7,6 +7,7 @@
 #include <SolverLib/Search.hpp>
 
 #include "AssignColors.hpp"
+#include "FindLabelContours.hpp"
 #include "FindLabels.hpp"
 #include "Image.hpp"
 
@@ -157,9 +158,45 @@ void recordVideoFrames()
     }
 }
 
+void analyzeVideo(const std::string& folder)
+{
+    for (int i = 0; ; ++i)
+    {
+        char buf[1024];
+        sprintf(buf, "%s/frame%05d.png", folder.c_str(), i);
+        cv::Mat3b img = cv::imread(buf, cv::IMREAD_COLOR);
+        if (img.empty())
+        {
+            break;
+        }
+
+        std::vector<LabelContour> labels = findLabelContours(img, 12, true);
+        {
+            cv::Mat3b canvas = img * 0.25f;
+            drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
+            cv::imshow("detected labels", canvas);
+        }
+
+        if (int key = cv::waitKey(1) & 255)
+        {
+            if (key == 27)
+            {
+                break; // stop by pressing ESC
+            }
+            if (key != 255)
+            {
+                printf("Key: %d\n", key);
+                fflush(stdout);
+            }
+        }
+    }
+}
+
 int main()
 {
     //recordVideoFrames()
+    analyzeVideo("video1");
+
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
