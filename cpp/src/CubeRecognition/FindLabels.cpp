@@ -54,12 +54,7 @@ std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img)
 
 std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img, double threshold, bool visualize)
 {
-    EdgeFunctionType edge_function = [&](const cv::Point& a, const cv::Point& b)
-    {
-        return cv::norm(img(a), img(b)) > threshold;
-    };
-
-    std::vector<LabelContour> labels = findLabelContours(img.size(), edge_function, visualize);
+    std::vector<LabelContour> labels = findLabelContours(img, threshold, visualize);
 
     printf("Num labels: %lu\n", labels.size());
     fflush(stdout);

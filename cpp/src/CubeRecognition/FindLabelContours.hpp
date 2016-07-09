@@ -6,7 +6,7 @@
 
 using EdgeFunctionType = std::function<bool(const cv::Point&, const cv::Point&)>;
 
-typedef float DT;
+std::vector<LabelContour> findLabelContours(const cv::Mat3b& img, double threshold, bool visualize);
 std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edge_function, bool visualize);
 
 void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& color);
