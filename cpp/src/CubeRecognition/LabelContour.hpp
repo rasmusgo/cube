@@ -74,8 +74,10 @@ struct LabelContour {
     float qmax;
     cv::Point2f native;
     cv::Rect2f native_rect;
+    std::vector<cv::Point> contour_points;
 
-    LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size);
+    LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size,
+        std::vector<cv::Point> contour_points);
     std::vector<cv::Point> guessneighbors();
     cv::Point2f native2xy(float nx, float ny) const;
     cv::Point2f xy2native(float x, float y) const;

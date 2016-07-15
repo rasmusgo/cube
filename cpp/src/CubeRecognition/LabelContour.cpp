@@ -1,7 +1,8 @@
 #include "LabelContour.hpp"
 
-LabelContour::LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size)
-    : center(center), size(size), area(area)
+LabelContour::LabelContour(const cv::Point2f& center, float area, const cv::Vec<float, 8>& size,
+    std::vector<cv::Point> contour_points)
+    : center(center), size(size), area(area), contour_points(contour_points)
 {
     float sx = size[1] - size[0] + 1;
     float sy = size[3] - size[2] + 1;

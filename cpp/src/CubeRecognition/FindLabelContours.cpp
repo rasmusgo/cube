@@ -37,7 +37,7 @@ LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFun
         d.x = -d.x;
 
     cv::Vec<float, 8> zerosize{0,0,0,0,0,0,0,0};
-    LabelContour bad_label(cv::Point2f(0,0), 0.f, zerosize);
+    LabelContour bad_label(cv::Point2f(0,0), 0.f, zerosize, {});
 
     auto is_inside_image = [&](const cv::Point& p)
     {
@@ -100,6 +100,8 @@ LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFun
     float cx = 0;
     float cy = 0;
 
+    std::vector<cv::Point> contour_points;
+
     auto step_forward = [&]()
     {
         // Take a step forward.
@@ -121,6 +123,9 @@ LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFun
 
         // Update bounds
         update_bounds(p);
+
+        // Store contour
+        contour_points.push_back(p);
         return true;
     };
 
@@ -182,7 +187,8 @@ LabelContour findLabelContour(const cv::Size& size, const cv::Point& p0, EdgeFun
         if ( p == p1 )
         {
             cv::Vec<float, 8> label_size = {xmin, xmax, ymin, ymax, ypmin, ypmax, ymmin, ymmax};
-            return LabelContour(cv::Point2f(cx/(3*area), cy/(3*area)), area/2, label_size);
+            return LabelContour(cv::Point2f(cx/(3*area), cy/(3*area)), area/2, label_size,
+                std::move(contour_points));
         }
     }
 }
@@ -301,6 +307,7 @@ void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& col
         cv_corners.emplace_back(corner.x * 255, corner.y * 255);
     }
     cv::polylines(canvas, cv_corners, true, color, 1, cv::LINE_AA, 8);
+    cv::polylines(canvas, label.contour_points, true, color, 1, cv::LINE_AA);
 }
 
 void drawLabels(cv::Mat& canvas, const std::vector<LabelContour>& labels, const cv::Scalar& color)
