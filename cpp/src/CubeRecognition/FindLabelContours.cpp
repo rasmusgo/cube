@@ -273,6 +273,76 @@ std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edg
     return labels;
 }
 
+std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelContour>& labels)
+{
+    std::vector<std::vector<cv::Point2f>> all_corners;
+    for (const auto& label : labels)
+    {
+        std::vector<cv::Point2f> hull_native;
+        cv::convexHull(label.xy2native(cast<cv::Point2f>(label.contour_points)), hull_native);
+
+        std::vector<cv::Point2f> smoothed_hull_native;
+        cv::approxPolyDP(hull_native, smoothed_hull_native, 3, true);
+
+//        cv::polylines(canvas, cast<cv::Point>(label.native2xy(smoothed_hull_native)),
+//            true, cv::Scalar(255, 0, 0));
+
+        // TODO(Rasmus): Sort corners (possibly by sorting edges).
+        using Edge = std::pair<cv::Point2f, cv::Point2f>;
+        std::vector<Edge> edges;
+        cv::Point2f center_native = label.xy2native(label.center);
+        for (int i = 0; i < smoothed_hull_native.size(); ++i)
+        {
+            int j = (i + 1) % smoothed_hull_native.size();
+            cv::Point2f a = smoothed_hull_native[i];
+            cv::Point2f b = smoothed_hull_native[j];
+            cv::Point2f ac = a - center_native;
+            cv::Point2f bc = b - center_native;
+            if ((ac.x > 0) != (bc.x > 0) || (ac.y > 0) != (bc.y > 0))
+            {
+                // The points ac and bc are in different quadrants.
+                edges.emplace_back(label.native2xy(a), label.native2xy(b));
+            }
+        }
+
+        if (edges.size() != 4)
+        {
+            printf("%lu edges\n", edges.size());
+            continue;
+        }
+
+        std::vector<cv::Point2f> corners;
+        for (int i = 0; i < edges.size(); ++i)
+        {
+            int j = (i + 1) % edges.size();
+            // Find the intersection of the two lines.
+            cv::Point2f a = edges[i].first;
+            cv::Point2f b = edges[i].second;
+            cv::Point2f c = edges[j].first;
+            cv::Point2f d = edges[j].second;
+            // p = a + (b-a) * t1 = c + (d-c) * t2
+            // (b-a) * t1 - (d-c) * t2 = c - a
+            // (b-a) * t1 + (c-d) * t2 = c - a
+            // Ax = B
+            // A = [ (b-a), (c-d) ]
+            // x = [ t1, t2 ]'
+            // B = c - a
+            // At*Ax = At*B
+            // x = At*A \ At*B
+            // p = a + (b - a) * t1
+            cv::Matx22d A = {
+                b.x - a.x, c.x - d.x,
+                b.y - a.y, c.y - d.y };
+            cv::Matx21d B = { c.x - a.x, c.y - a.y };
+            cv::Matx21d x = (A.t() * A).inv() * (A.t() * B);
+            cv::Point2f p = a + (b - a) * x(0);
+            corners.push_back(p);
+        }
+        all_corners.push_back(corners);
+    }
+    return all_corners;
+}
+
 void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& color)
 {
     cv::Point2f np = label.native;

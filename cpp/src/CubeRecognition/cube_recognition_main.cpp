@@ -171,9 +171,15 @@ void analyzeVideo(const std::string& folder)
         }
 
         std::vector<LabelContour> labels = findLabelContours(img, 12, true);
+        std::vector<std::vector<cv::Point2f>> label_corners = findLabelCorners(labels);
         {
             cv::Mat3b canvas = img * 0.25f;
             drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
+
+            for (const auto& corners : label_corners)
+            {
+                cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
+            }
             cv::imshow("detected labels", canvas);
         }
 
