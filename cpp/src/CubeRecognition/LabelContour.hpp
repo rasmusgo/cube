@@ -67,6 +67,8 @@ T ypym2area(T yp,T ym) {
 }
 
 struct LabelContour {
+    using Points   = std::vector<cv::Point>;
+    using Points2f = std::vector<cv::Point2f>;
     cv::Point2f center;
     cv::Vec<float, 8> size;
     float area;
@@ -81,6 +83,12 @@ struct LabelContour {
     std::vector<cv::Point> guessneighbors();
     cv::Point2f native2xy(float nx, float ny) const;
     cv::Point2f xy2native(float x, float y) const;
+    cv::Point2f native2xy(cv::Point2f p) const { return native2xy(p.x, p.y); }
+    cv::Point2f xy2native(cv::Point2f p) const { return xy2native(p.x, p.y); }
+    Points native2xy(const Points& vec) const;
+    Points xy2native(const Points& vec) const;
+    Points2f native2xy(const Points2f& vec) const;
+    Points2f xy2native(const Points2f& vec) const;
 };
 
 bool are_neighbors(const LabelContour& a, const LabelContour& b);

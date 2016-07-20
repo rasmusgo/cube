@@ -113,6 +113,50 @@ cv::Point2f LabelContour::xy2native(float x, float y) const
     }
 }
 
+LabelContour::Points LabelContour::native2xy(const Points& vec) const
+{
+    Points ret;
+    ret.reserve(vec.size());
+    for (const auto& e : vec)
+    {
+        ret.push_back(native2xy(e));
+    }
+    return ret;
+}
+
+LabelContour::Points LabelContour::xy2native(const Points& vec) const
+{
+    Points ret;
+    ret.reserve(vec.size());
+    for (const auto& e : vec)
+    {
+        ret.push_back(xy2native(e));
+    }
+    return ret;
+}
+
+LabelContour::Points2f LabelContour::native2xy(const Points2f& vec) const
+{
+    Points2f ret;
+    ret.reserve(vec.size());
+    for (const auto& e : vec)
+    {
+        ret.push_back(native2xy(e));
+    }
+    return ret;
+}
+
+LabelContour::Points2f LabelContour::xy2native(const Points2f& vec) const
+{
+    Points2f ret;
+    ret.reserve(vec.size());
+    for (const auto& e : vec)
+    {
+        ret.push_back(xy2native(e));
+    }
+    return ret;
+}
+
 bool are_neighbors(const LabelContour& a, const LabelContour& b)
 {
     if (a.type != b.type)
