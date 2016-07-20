@@ -66,6 +66,18 @@ T ypym2area(T yp,T ym) {
     return (yp * ym) / (KP+KM);
 }
 
+template <class B, class A>
+std::vector<B> cast(const std::vector<A>& a_vec)
+{
+    std::vector<B> b_vec;
+    b_vec.reserve(a_vec.size());
+    for (const A& a : a_vec)
+    {
+        b_vec.push_back(static_cast<B>(a));
+    }
+    return b_vec;
+}
+
 struct LabelContour {
     using Points   = std::vector<cv::Point>;
     using Points2f = std::vector<cv::Point2f>;
