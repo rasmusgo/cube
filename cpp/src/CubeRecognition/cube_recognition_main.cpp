@@ -179,6 +179,13 @@ void analyzeVideo(const std::string& folder)
             for (const auto& corners : label_corners)
             {
                 cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
+                for (size_t i = 0; i < corners.size(); ++i)
+                {
+                    char text[12];
+                    sprintf(text, "%lu", i);
+                    cv::putText(canvas, text, corners[i],
+                        cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
+                }
             }
             cv::imshow("detected labels", canvas);
         }
