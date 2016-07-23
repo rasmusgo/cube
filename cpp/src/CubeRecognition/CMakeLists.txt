@@ -11,6 +11,8 @@ add_executable(CubeRecognition
     Image.hpp
     LabelContour.cpp
     LabelContour.hpp
+    ProbabalisticCube.cpp
+    ProbabalisticCube.hpp
     Settings.hpp
     SolveCamera.cpp
     SolveCamera.hpp
