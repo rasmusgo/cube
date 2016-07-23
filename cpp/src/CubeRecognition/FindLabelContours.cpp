@@ -213,7 +213,7 @@ std::vector<LabelContour> findLabelContours(cv::Size size, EdgeFunctionType& edg
     std::vector<LabelContour> labels;
 
     const int numcolors = 6*5;
-    int colorarea[numcolors] = {
+    const int colorarea[numcolors] = {
         0x7f0000, 0x7f007f, 0x00007f, 0x007f7f, 0x007f00, 0x7f7f00,
         0x643232, 0x643264, 0x323264, 0x326464, 0x326432, 0x646432,
         0xc80000, 0xc800c8, 0x0000c8, 0x00c8c8, 0x00c800, 0xc8c800,
@@ -279,7 +279,7 @@ std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelCo
     for (const auto& label : labels)
     {
         std::vector<cv::Point2f> hull_native;
-        cv::convexHull(label.xy2native(cast<cv::Point2f>(label.contour_points)), hull_native);
+        cv::convexHull(label.xy2native(cast<cv::Point2f>(label.contour_points)), hull_native, true);
 
         std::vector<cv::Point2f> smoothed_hull_native;
         cv::approxPolyDP(hull_native, smoothed_hull_native, 3, true);
@@ -287,9 +287,9 @@ std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelCo
 //        cv::polylines(canvas, cast<cv::Point>(label.native2xy(smoothed_hull_native)),
 //            true, cv::Scalar(255, 0, 0));
 
-        // TODO(Rasmus): Sort corners (possibly by sorting edges).
         using Edge = std::pair<cv::Point2f, cv::Point2f>;
         std::vector<Edge> edges;
+        size_t zeroth_edge = 0;
         cv::Point2f center_native = label.xy2native(label.center);
         for (int i = 0; i < smoothed_hull_native.size(); ++i)
         {
@@ -300,6 +300,10 @@ std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelCo
             cv::Point2f bc = b - center_native;
             if ((ac.x > 0) != (bc.x > 0) || (ac.y > 0) != (bc.y > 0))
             {
+                if ((ac.x > 0) && (bc.x > 0) && (ac.y > 0) != (bc.y > 0))
+                {
+                    zeroth_edge = edges.size();
+                }
                 // The points ac and bc are in different quadrants.
                 edges.emplace_back(label.native2xy(a), label.native2xy(b));
             }
@@ -312,9 +316,10 @@ std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelCo
         }
 
         std::vector<cv::Point2f> corners;
-        for (int i = 0; i < edges.size(); ++i)
+        for (int k = 0; k < edges.size(); ++k)
         {
-            int j = (i + 1) % edges.size();
+            int i = (k + zeroth_edge) % edges.size();
+            int j = (k + zeroth_edge + 1) % edges.size();
             // Find the intersection of the two lines.
             cv::Point2f a = edges[i].first;
             cv::Point2f b = edges[i].second;
