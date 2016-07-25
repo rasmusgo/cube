@@ -10,6 +10,7 @@
 #include "FindLabelContours.hpp"
 #include "FindLabels.hpp"
 #include "Image.hpp"
+#include "ProbabalisticCube.hpp"
 
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
@@ -160,14 +161,46 @@ void recordVideoFrames()
 
 void analyzeVideo(const std::string& folder)
 {
+    // Start with a single hypotheses of the cube.
+    std::vector<ProbabalisticCube> cube_hypotheses;
+    cube_hypotheses.push_back(ProbabalisticCube());
     for (int i = 0; ; ++i)
     {
+        printf("Frame %i\n", i);
+
         char buf[1024];
         sprintf(buf, "%s/frame%05d.png", folder.c_str(), i);
         cv::Mat3b img = cv::imread(buf, cv::IMREAD_COLOR);
         if (img.empty())
         {
             break;
+        }
+
+        const size_t num_hypotheses_before = cube_hypotheses.size();
+        printf("Num hypotheses before: %lu\n", num_hypotheses_before);
+
+        cube_hypotheses = predict(cube_hypotheses);
+        const size_t num_hypotheses_after = cube_hypotheses.size();
+        printf("Num hypotheses after:  %lu\n", num_hypotheses_after);
+        printf("Brancing factor:  %f\n", double(num_hypotheses_after) / num_hypotheses_before);
+
+        const size_t max_hypotheses = 216;
+        if (num_hypotheses_after > max_hypotheses)
+        {
+            const size_t pruned_num = num_hypotheses_after - max_hypotheses;
+            const double removed_percentage = pruned_num * 100.0 / num_hypotheses_after;
+            printf("Pruning to %lu hypotheses, removing %lu (%.1f%%) hypotheses.\n",
+                max_hypotheses, pruned_num, removed_percentage);
+        }
+        prune(cube_hypotheses, max_hypotheses);
+
+        printf("Most likely cubes:\n");
+        for (int i = 0; i < cube_hypotheses.size() && i < 5; ++i)
+        {
+            const ProbabalisticCube& cube = cube_hypotheses[i];
+            const std::string permutation = cube.cube_permutation.to_String();
+            const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
+            printf("%d: %s %3.5f%%\n", i, permutation.c_str(), likelihood_percent);
         }
 
         std::vector<LabelContour> labels = findLabelContours(img, 12, true);
