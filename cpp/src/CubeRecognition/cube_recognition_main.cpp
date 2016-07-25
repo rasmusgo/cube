@@ -11,6 +11,7 @@
 #include "FindLabels.hpp"
 #include "Image.hpp"
 #include "ProbabalisticCube.hpp"
+#include "SolveCamera.hpp"
 
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
@@ -159,7 +160,25 @@ void recordVideoFrames()
     }
 }
 
-void analyzeVideo(const std::string& folder)
+cv::Vec3d median(std::vector<cv::Vec3d> vectors)
+{
+    std::vector<double> x_pos;
+    std::vector<double> y_pos;
+    std::vector<double> z_pos;
+    for (auto& vec : vectors)
+    {
+        x_pos.push_back(vec[0]);
+        y_pos.push_back(vec[1]);
+        z_pos.push_back(vec[2]);
+    }
+    size_t mid = vectors.size() / 2;
+    std::nth_element(x_pos.begin(), x_pos.begin() + mid, x_pos.end());
+    std::nth_element(y_pos.begin(), y_pos.begin() + mid, y_pos.end());
+    std::nth_element(z_pos.begin(), z_pos.begin() + mid, z_pos.end());
+    return cv::Vec3d(x_pos[mid], y_pos[mid], z_pos[mid]);
+}
+
+void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
 {
     // Start with a single hypotheses of the cube.
     std::vector<ProbabalisticCube> cube_hypotheses;
@@ -205,6 +224,66 @@ void analyzeVideo(const std::string& folder)
 
         std::vector<LabelContour> labels = findLabelContours(img, 12, true);
         std::vector<std::vector<cv::Point2f>> label_corners = findLabelCorners(labels);
+
+        std::vector<Camera> all_camera_candidates;
+        {
+            cv::Mat3b canvas = img * 0.25f;
+            cv::Mat1f accumulation(img.size(), 0.f);
+            for (const auto& corners : label_corners)
+            {
+                std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners);
+                all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
+
+                for (const auto& cam : cameras)
+                {
+                    cv::Mat1f contribution(img.size(), 0.f);
+                    std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+                    for (int i = 0; i < visible_corners.size(); i += 4)
+                    {
+                        std::vector<cv::Point> corners = {
+                            visible_corners[i + 0],
+                            visible_corners[i + 1],
+                            visible_corners[i + 2],
+                            visible_corners[i + 3],
+                        };
+                        cv::polylines(contribution, corners, true, cv::Scalar(1.0));
+                    }
+                    accumulation += contribution;
+                }
+            }
+            double minval;
+            double maxval;
+            cv::minMaxLoc(accumulation, &minval, &maxval);
+            cv::imshow("accumulation", accumulation / maxval);
+
+            if (!all_camera_candidates.empty())
+            {
+                std::vector<cv::Vec3d> tvecs;
+                std::vector<cv::Vec3d> rvecs;
+                for (const auto& cam : all_camera_candidates)
+                {
+                    tvecs.push_back(cam.tvec);
+                    rvecs.push_back(cam.rvec);
+                }
+                Camera cam = calibrated_camera;
+                cam.tvec = median(std::move(tvecs));
+                cam.rvec = median(std::move(rvecs));
+                std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+                for (int i = 0; i < visible_corners.size(); i += 4)
+                {
+                    std::vector<cv::Point> corners = {
+                        visible_corners[i + 0],
+                        visible_corners[i + 1],
+                        visible_corners[i + 2],
+                        visible_corners[i + 3],
+                    };
+                    cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
+                }
+            }
+
+            cv::imshow("predicted labels", canvas);
+        }
+
         {
             cv::Mat3b canvas = img * 0.25f;
             drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
@@ -220,6 +299,7 @@ void analyzeVideo(const std::string& folder)
                         cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
                 }
             }
+
             cv::imshow("detected labels", canvas);
         }
 
@@ -241,15 +321,17 @@ void analyzeVideo(const std::string& folder)
 int main()
 {
     //recordVideoFrames()
-    analyzeVideo("video1");
 
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
 
-    setupWindows(img_bottom.size());
-
     std::vector<cv::Point2f> points_top    = findLabelPositions(img_top);
     std::vector<cv::Point2f> points_bottom = findLabelPositions(img_bottom);
+
+    Camera cam = solveCamera(points_top, points_bottom, img_top.size());
+    analyzeVideo("video1", cam);
+
+    setupWindows(img_bottom.size());
 
     std::vector<cv::Scalar> colors_top    = readLabelColors(img_top, points_top);
     std::vector<cv::Scalar> colors_bottom = readLabelColors(img_bottom, points_bottom);

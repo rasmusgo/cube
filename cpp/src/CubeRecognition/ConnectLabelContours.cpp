@@ -12,6 +12,25 @@
 /**
  * Connect labels by associating neighbors in a connected components search.
  *
+ * Spatial indices goes from -1.5 to 1.5.
+ *
+ * -1.5 ┬  ┌───────┬───────┬───────┐
+ *      │  │       │       │       │
+ *      │  │       │       │       │
+ *      │  │       │       │       │
+ * -0.5 ┼  ├───────┼───────┼───────┤
+ *      │  │       │       │       │
+ *      │  │       │  0,0  │       │
+ *      │  │       │       │       │
+ *  0.5 ┼  ├───────┼───────┼───────┤
+ *      │  │       │       │       │
+ *      │  │       │       │       │
+ *      │  │       │       │       │
+ *  1.5 ┴  └───────┴───────┴───────┘
+ *
+ *         ├───────┼───────┼───────┤
+ *       -1.5    -0.5     0.5     1.5
+ *
  * @return (grouped_labels, spatial_indices)
  */
 std::pair<std::vector<std::vector<LabelContour>>, std::vector<std::vector<cv::Point2f>>>
@@ -22,14 +41,6 @@ std::pair<std::vector<std::vector<LabelContour>>, std::vector<std::vector<cv::Po
     {
         typed_labels[label.type].push_back(label);
     }
-
-    cv::Scalar colors[] = {
-        cv::Scalar(255, 0, 0),
-        cv::Scalar(0, 0, 255),
-        cv::Scalar(0, 255, 255),
-        cv::Scalar(255, 255, 255),
-    };
-    std::string winnames[] = {"F", "R", "U", "S"};
 
     std::vector<std::vector<cv::Point2f>> spatial_indices(4);
     for (size_t i = 0; i < 4; ++i)
@@ -65,6 +76,14 @@ std::pair<std::vector<std::vector<LabelContour>>, std::vector<std::vector<cv::Po
 
         if (visualize)
         {
+            cv::Scalar colors[] = {
+                cv::Scalar(255, 0, 0),
+                cv::Scalar(0, 0, 255),
+                cv::Scalar(0, 255, 255),
+                cv::Scalar(255, 255, 255),
+            };
+            std::string winnames[] = {"F", "R", "U", "S"};
+
             cv::Mat3b canvas(cv::Size(max_x - min_x, max_y - min_y), cv::Vec3b(0,0,0));
             for (const auto& label : group)
             {

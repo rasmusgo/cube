@@ -22,4 +22,13 @@ Camera solveCamera(
     const std::vector<std::vector<cv::Point2f>>& spatial_indices,
     const cv::Size& image_size);
 
+Camera solveCamera(
+    const std::vector<cv::Point2f>& label_positions_top,
+    const std::vector<cv::Point2f>& label_positions_bottom,
+    const cv::Size& image_size);
+
 std::vector<cv::Point2f> projectCube(const Camera& cam);
+std::vector<cv::Point2f> projectCubeCorners(const Camera& cam);
+
+std::vector<Camera> predictCameraPosesForLabel(
+    const Camera& cam, const std::vector<cv::Point2f>& label_corners);
