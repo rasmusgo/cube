@@ -122,7 +122,8 @@ public:
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // Gives string representation of a facelet cube
-    std::string to_String() {
+    std::string to_String() const
+    {
         std::string s = "";
         for (int i = 0; i < 54; i++)
             s += colorToChar(f[i]);
