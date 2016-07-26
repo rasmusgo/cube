@@ -172,9 +172,10 @@ std::vector<cv::Point2f> projectCube(const Camera& cam)
     return points2d;
 }
 
-std::vector<cv::Point2f> projectCubeCorners(const Camera& cam)
+std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width)
 {
     // Generate 3D points.
+    const float half_width = label_width * 0.5f;
     std::vector<cv::Point3f> points3d;
     for (int side = 0; side < 6; ++side)
     {
@@ -182,10 +183,10 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam)
         {
             for (int x : {-1, 0, 1})
             {
-                points3d.push_back(idTo3d(side, x + 0.5f, y - 0.5f));
-                points3d.push_back(idTo3d(side, x - 0.5f, y - 0.5f));
-                points3d.push_back(idTo3d(side, x - 0.5f, y + 0.5f));
-                points3d.push_back(idTo3d(side, x + 0.5f, y + 0.5f));
+                points3d.push_back(idTo3d(side, x + half_width, y - half_width));
+                points3d.push_back(idTo3d(side, x - half_width, y - half_width));
+                points3d.push_back(idTo3d(side, x - half_width, y + half_width));
+                points3d.push_back(idTo3d(side, x + half_width, y + half_width));
             }
         }
     }
@@ -211,9 +212,10 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam)
 }
 
 std::vector<Camera> predictCameraPosesForLabel(
-    const Camera& cam, const std::vector<cv::Point2f>& label_corners)
+    const Camera& cam, const std::vector<cv::Point2f>& label_corners, float label_width)
 {
-    static const std::vector<std::vector<cv::Point3f>> candidate_points3d = []()
+    const float half_width = label_width * 0.5f;
+    const std::vector<std::vector<cv::Point3f>> candidate_points3d = [&half_width]()
     {
         std::vector<std::vector<cv::Point3f>> point_groups;
         point_groups.reserve(9);
@@ -223,10 +225,10 @@ std::vector<Camera> predictCameraPosesForLabel(
             {
                 std::vector<cv::Point3f> label_points3d;
                 label_points3d.reserve(4);
-                label_points3d.emplace_back(x + 0.5f, y + 0.5f, 1.5f);
-                label_points3d.emplace_back(x - 0.5f, y + 0.5f, 1.5f);
-                label_points3d.emplace_back(x - 0.5f, y - 0.5f, 1.5f);
-                label_points3d.emplace_back(x + 0.5f, y - 0.5f, 1.5f);
+                label_points3d.emplace_back(x + half_width, y + half_width, 1.5f);
+                label_points3d.emplace_back(x - half_width, y + half_width, 1.5f);
+                label_points3d.emplace_back(x - half_width, y - half_width, 1.5f);
+                label_points3d.emplace_back(x + half_width, y - half_width, 1.5f);
                 point_groups.push_back(std::move(label_points3d));
             }
         }

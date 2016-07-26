@@ -28,7 +28,7 @@ Camera solveCamera(
     const cv::Size& image_size);
 
 std::vector<cv::Point2f> projectCube(const Camera& cam);
-std::vector<cv::Point2f> projectCubeCorners(const Camera& cam);
+std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width);
 
 std::vector<Camera> predictCameraPosesForLabel(
-    const Camera& cam, const std::vector<cv::Point2f>& label_corners);
+    const Camera& cam, const std::vector<cv::Point2f>& label_corners, float label_width);

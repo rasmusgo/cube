@@ -178,7 +178,7 @@ cv::Vec3d median(std::vector<cv::Vec3d> vectors)
     return cv::Vec3d(x_pos[mid], y_pos[mid], z_pos[mid]);
 }
 
-void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
+void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     // Start with a single hypotheses of the cube.
     std::vector<ProbabalisticCube> cube_hypotheses;
@@ -228,7 +228,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
         std::vector<Camera> all_camera_candidates;
         for (const auto& corners : label_corners)
         {
-            std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners);
+            std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners, label_width);
             all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
         }
 
@@ -239,7 +239,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
             for (const auto& cam : all_camera_candidates)
             {
                 cv::Mat1f contribution(img.size(), 0.f);
-                std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+                std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam, label_width);
                 double score = 0;
                 double sigma = 10;
                 double inv_denom = 1.0 / (2 * sigma * sigma);
@@ -294,7 +294,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
             const size_t index = std::distance(camera_scores.begin(),
                 std::max_element(camera_scores.begin(), camera_scores.end()));
             const Camera& cam = all_camera_candidates[index];
-            std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+            std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam, label_width);
 
             cv::Mat3b canvas = img * 0.25f;
             for (int i = 0; i < visible_corners.size(); i += 4)
@@ -356,7 +356,8 @@ int main()
     std::vector<cv::Point2f> points_bottom = findLabelPositions(img_bottom);
 
     Camera cam = solveCamera(points_top, points_bottom, img_top.size());
-    analyzeVideo("video1", cam);
+    const float label_width = 0.9f;
+    analyzeVideo("video1", cam, label_width);
 
     setupWindows(img_bottom.size());
 
