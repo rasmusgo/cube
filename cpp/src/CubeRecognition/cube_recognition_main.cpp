@@ -226,49 +226,38 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
         std::vector<std::vector<cv::Point2f>> label_corners = findLabelCorners(labels);
 
         std::vector<Camera> all_camera_candidates;
+        for (const auto& corners : label_corners)
         {
-            cv::Mat3b canvas = img * 0.25f;
+            std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners);
+            all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
+        }
+
+        std::vector<double> camera_scores;
+        camera_scores.reserve(all_camera_candidates.size());
+        {
             cv::Mat1f accumulation(img.size(), 0.f);
-            for (const auto& corners : label_corners)
+            for (const auto& cam : all_camera_candidates)
             {
-                std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners);
-                all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
-
-                for (const auto& cam : cameras)
-                {
-                    cv::Mat1f contribution(img.size(), 0.f);
-                    std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
-                    for (int i = 0; i < visible_corners.size(); i += 4)
-                    {
-                        std::vector<cv::Point> corners = {
-                            visible_corners[i + 0],
-                            visible_corners[i + 1],
-                            visible_corners[i + 2],
-                            visible_corners[i + 3],
-                        };
-                        cv::polylines(contribution, corners, true, cv::Scalar(1.0));
-                    }
-                    accumulation += contribution;
-                }
-            }
-            double minval;
-            double maxval;
-            cv::minMaxLoc(accumulation, &minval, &maxval);
-            cv::imshow("accumulation", accumulation / maxval);
-
-            if (!all_camera_candidates.empty())
-            {
-                std::vector<cv::Vec3d> tvecs;
-                std::vector<cv::Vec3d> rvecs;
-                for (const auto& cam : all_camera_candidates)
-                {
-                    tvecs.push_back(cam.tvec);
-                    rvecs.push_back(cam.rvec);
-                }
-                Camera cam = calibrated_camera;
-                cam.tvec = median(std::move(tvecs));
-                cam.rvec = median(std::move(rvecs));
+                cv::Mat1f contribution(img.size(), 0.f);
                 std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+                double score = 0;
+                double sigma = 10;
+                double inv_denom = 1.0 / (2 * sigma * sigma);
+                for (int i = 0; i < visible_corners.size(); i += 4)
+                {
+                    for (const auto& corners : label_corners)
+                    {
+                        double label_score = 1.0;
+                        for (int j = 0; j < 4; ++j)
+                        {
+                            double d2 = cv::norm(cv::Vec2f(visible_corners[i + j] - corners[j]), cv::NORM_L2SQR);
+                            label_score *= exp(-d2 * inv_denom);
+                        }
+                        score += label_score;
+                    }
+                }
+                camera_scores.push_back(score);
+
                 for (int i = 0; i < visible_corners.size(); i += 4)
                 {
                     std::vector<cv::Point> corners = {
@@ -277,8 +266,46 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera)
                         visible_corners[i + 2],
                         visible_corners[i + 3],
                     };
-                    cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
+                    cv::polylines(contribution, corners, true, cv::Scalar(score * score));
                 }
+                accumulation += contribution;
+            }
+            double minval;
+            double maxval;
+            cv::minMaxLoc(accumulation, &minval, &maxval);
+            cv::imshow("accumulation", accumulation / maxval);
+        }
+        if (!camera_scores.empty())
+        {
+            std::vector<double> sorted_camera_scores = camera_scores;
+            std::sort(sorted_camera_scores.begin(), sorted_camera_scores.end());
+            std::reverse(sorted_camera_scores.begin(), sorted_camera_scores.end());
+            printf("Min score: %f max score: %f\n", sorted_camera_scores.back(), sorted_camera_scores.front());
+
+            for (int i = 0; i < sorted_camera_scores.size() && i < 5; ++i)
+            {
+                double score = sorted_camera_scores[i];
+                printf("#%d score: %f\n", i + 1, score);
+            }
+        }
+
+        if (!all_camera_candidates.empty())
+        {
+            const size_t index = std::distance(camera_scores.begin(),
+                std::max_element(camera_scores.begin(), camera_scores.end()));
+            const Camera& cam = all_camera_candidates[index];
+            std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam);
+
+            cv::Mat3b canvas = img * 0.25f;
+            for (int i = 0; i < visible_corners.size(); i += 4)
+            {
+                std::vector<cv::Point> corners = {
+                    visible_corners[i + 0],
+                    visible_corners[i + 1],
+                    visible_corners[i + 2],
+                    visible_corners[i + 3],
+                };
+                cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
             }
 
             cv::imshow("predicted labels", canvas);
