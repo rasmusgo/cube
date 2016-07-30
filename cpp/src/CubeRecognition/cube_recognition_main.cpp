@@ -205,10 +205,10 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         }
 
         std::vector<LabelContour> labels = findLabelContours(img, 12, true);
-        std::vector<std::vector<cv::Point2f>> label_corners = findLabelCorners(labels);
+        std::vector<std::vector<cv::Point2f>> detected_corners = findLabelCorners(labels);
 
         std::vector<Camera> all_camera_candidates;
-        for (const auto& corners : label_corners)
+        for (const auto& corners : detected_corners)
         {
             std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners, label_width);
             all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
@@ -221,32 +221,43 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             for (const auto& cam : all_camera_candidates)
             {
                 cv::Mat1f contribution(img.size(), 0.f);
-                std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam, label_width);
+                std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
                 double score = 0;
-                double sigma = 10;
+                double sigma = 5;
                 double inv_denom = 1.0 / (2 * sigma * sigma);
-                for (int i = 0; i < visible_corners.size(); i += 4)
+                for (int i = 0; i < predicted_corners.size(); i += 4)
                 {
-                    for (const auto& corners : label_corners)
+                    for (const auto& corners : detected_corners)
                     {
-                        double label_score = 1.0;
-                        for (int j = 0; j < 4; ++j)
+                        // We are now looking at one predicted and one detected label.
+                        // Test different rotations (corner order) of the detected label since it
+                        // may not always match the predicted rotation.
+                        double label_score = 0;
+                        for (int rotation_i = 0; rotation_i < 4; ++rotation_i)
                         {
-                            double d2 = cv::norm(cv::Vec2f(visible_corners[i + j] - corners[j]), cv::NORM_L2SQR);
-                            label_score *= exp(-d2 * inv_denom);
+                            double rotation_score = 0;
+                            for (int corner_i = 0; corner_i < 4; ++corner_i)
+                            {
+                                int j = (rotation_i + corner_i) % 4;
+                                int k = (rotation_i + corner_i + 1) % 4;
+                                double a_d2 = cv::norm(cv::Vec2f(predicted_corners[i + j] - corners[j]), cv::NORM_L2SQR);
+                                double b_d2 = cv::norm(cv::Vec2f(predicted_corners[i + k] - corners[k]), cv::NORM_L2SQR);
+                                rotation_score += exp(-a_d2 * inv_denom) * exp(-b_d2 * inv_denom);
+                            }
+                            label_score = std::max(label_score, rotation_score);
                         }
                         score += label_score;
                     }
                 }
                 camera_scores.push_back(score);
 
-                for (int i = 0; i < visible_corners.size(); i += 4)
+                for (int i = 0; i < predicted_corners.size(); i += 4)
                 {
                     std::vector<cv::Point> corners = {
-                        visible_corners[i + 0],
-                        visible_corners[i + 1],
-                        visible_corners[i + 2],
-                        visible_corners[i + 3],
+                        predicted_corners[i + 0],
+                        predicted_corners[i + 1],
+                        predicted_corners[i + 2],
+                        predicted_corners[i + 3],
                     };
                     cv::polylines(contribution, corners, true, cv::Scalar(score * score));
                 }
@@ -275,19 +286,31 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         {
             const size_t index = std::distance(camera_scores.begin(),
                 std::max_element(camera_scores.begin(), camera_scores.end()));
+            printf("detected_corners size: %lu index: %lu\n", detected_corners.size(), index);
+
             const Camera& cam = all_camera_candidates[index];
-            std::vector<cv::Point2f> visible_corners = projectCubeCorners(cam, label_width);
+            std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
 
             cv::Mat3b canvas = img * 0.25f;
-            for (int i = 0; i < visible_corners.size(); i += 4)
+            for (int i = 0; i < predicted_corners.size(); i += 4)
             {
                 std::vector<cv::Point> corners = {
-                    visible_corners[i + 0],
-                    visible_corners[i + 1],
-                    visible_corners[i + 2],
-                    visible_corners[i + 3],
+                    predicted_corners[i + 0],
+                    predicted_corners[i + 1],
+                    predicted_corners[i + 2],
+                    predicted_corners[i + 3],
                 };
                 cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
+            }
+
+            {
+                std::vector<cv::Point> corners = {
+                    detected_corners[index / 9][0],
+                    detected_corners[index / 9][1],
+                    detected_corners[index / 9][2],
+                    detected_corners[index / 9][3],
+                };
+                cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
             }
 
             cv::imshow("predicted labels", canvas);
@@ -297,7 +320,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             cv::Mat3b canvas = img * 0.25f;
             drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
 
-            for (const auto& corners : label_corners)
+            for (const auto& corners : detected_corners)
             {
                 cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
                 for (size_t i = 0; i < corners.size(); ++i)
