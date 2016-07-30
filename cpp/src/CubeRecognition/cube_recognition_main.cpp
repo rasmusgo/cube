@@ -165,12 +165,12 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
     // Start with a single hypotheses of the cube.
     std::vector<ProbabalisticCube> cube_hypotheses;
     cube_hypotheses.push_back(ProbabalisticCube());
-    for (int i = 0; ; ++i)
+    for (int frame_i = 0;;)
     {
-        printf("Frame %i\n", i);
+        printf("Frame %i\n", frame_i);
 
         char buf[1024];
-        sprintf(buf, "%s/frame%05d.png", folder.c_str(), i);
+        sprintf(buf, "%s/frame%05d.png", folder.c_str(), frame_i);
         cv::Mat3b img = cv::imread(buf, cv::IMREAD_COLOR);
         if (img.empty())
         {
@@ -335,11 +335,31 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             cv::imshow("detected labels", canvas);
         }
 
-        if (int key = cv::waitKey(1) & 255)
+        if (int key = cv::waitKey(0) & 255)
         {
             if (key == 27)
             {
                 break; // stop by pressing ESC
+            }
+            if (key == 32) // space
+            {
+                ++frame_i;
+            }
+            if (key == 83) // right arrow
+            {
+                ++frame_i;
+            }
+            if (key == 82) // up arrow
+            {
+
+            }
+            if (key == 81) // left arrow
+            {
+                --frame_i;
+            }
+            if (key == 84) // down arrow
+            {
+
             }
             if (key != 255)
             {
