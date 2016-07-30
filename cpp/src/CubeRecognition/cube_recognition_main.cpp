@@ -160,24 +160,6 @@ void recordVideoFrames()
     }
 }
 
-cv::Vec3d median(std::vector<cv::Vec3d> vectors)
-{
-    std::vector<double> x_pos;
-    std::vector<double> y_pos;
-    std::vector<double> z_pos;
-    for (auto& vec : vectors)
-    {
-        x_pos.push_back(vec[0]);
-        y_pos.push_back(vec[1]);
-        z_pos.push_back(vec[2]);
-    }
-    size_t mid = vectors.size() / 2;
-    std::nth_element(x_pos.begin(), x_pos.begin() + mid, x_pos.end());
-    std::nth_element(y_pos.begin(), y_pos.begin() + mid, y_pos.end());
-    std::nth_element(z_pos.begin(), z_pos.begin() + mid, z_pos.end());
-    return cv::Vec3d(x_pos[mid], y_pos[mid], z_pos[mid]);
-}
-
 void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     // Start with a single hypotheses of the cube.
