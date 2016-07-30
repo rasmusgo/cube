@@ -32,3 +32,6 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width
 
 std::vector<Camera> predictCameraPosesForLabel(
     const Camera& cam, const std::vector<cv::Point2f>& label_corners, float label_width);
+
+double scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners);

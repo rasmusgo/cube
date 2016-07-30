@@ -247,3 +247,36 @@ std::vector<Camera> predictCameraPosesForLabel(
     }
     return cam_candidates;
 }
+
+double scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners)
+{
+    double score = 0;
+    double sigma = 5;
+    double inv_denom = 1.0 / (2 * sigma * sigma);
+    for (int i = 0; i < predicted_corners.size(); i += 4)
+    {
+        for (const auto& corners : detected_corners)
+        {
+            // We are now looking at one predicted and one detected label.
+            // Test different rotations (corner order) of the detected label since it
+            // may not always match the predicted rotation.
+            double label_score = 0;
+            for (int rotation_i = 0; rotation_i < 4; ++rotation_i)
+            {
+                double rotation_score = 0;
+                for (int corner_i = 0; corner_i < 4; ++corner_i)
+                {
+                    int j = (rotation_i + corner_i) % 4;
+                    int k = (rotation_i + corner_i + 1) % 4;
+                    double a_d2 = cv::norm(cv::Vec2f(predicted_corners[i + j] - corners[j]), cv::NORM_L2SQR);
+                    double b_d2 = cv::norm(cv::Vec2f(predicted_corners[i + k] - corners[k]), cv::NORM_L2SQR);
+                    rotation_score += exp(-a_d2 * inv_denom) * exp(-b_d2 * inv_denom);
+                }
+                label_score = std::max(label_score, rotation_score);
+            }
+            score += label_score;
+        }
+    }
+    return score;
+}
