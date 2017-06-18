@@ -1,8 +1,12 @@
+#include <cmath>
 #include <cstdio>
 #include <sstream>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
-#include <math.h>
+#endif
 
 #include <SolverLib/FaceCube.hpp>
 #include <SolverLib/MoveTable.hpp>
