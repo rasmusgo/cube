@@ -179,6 +179,45 @@ bool isLegalMerge(
     return true;
 }
 
+bool recursiveMerges(
+    GroupMerger& io_groups,
+    const std::vector<std::vector<size_t>>& adjacency,
+    const std::vector<PairCost>& pair_costs)
+{
+    if (io_groups.getNumGroups() == 6)
+    {
+        return true;
+    }
+
+    for (const auto& pair : pair_costs)
+    {
+        // This pair wants to merge the color groups of pair.a and pair.b
+        size_t root_a = io_groups.findRoot(pair.a);
+        size_t root_b = io_groups.findRoot(pair.b);
+        if (root_a == root_b)
+        {
+            // Already merged.
+            continue;
+        }
+
+        if (!isLegalMerge(io_groups, adjacency, root_a, root_b))
+        {
+            continue;
+        }
+
+        // Try merging this pair
+        GroupMerger final_groups = io_groups;
+        final_groups.mergeNodes(root_a, root_b);
+
+        if (recursiveMerges(final_groups, adjacency, pair_costs))
+        {
+            io_groups = final_groups;
+            return true;
+        }
+    }
+    return false;
+}
+
 cv::Mat3b plotMerges(
     GroupMerger& io_groups,
     const std::vector<cv::Scalar>& colors,
@@ -258,51 +297,32 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
     std::sort(pair_costs.begin(), pair_costs.end());
 
     GroupMerger groups(colors.size());
+    recursiveMerges(groups, adjacency, pair_costs);
 
-    for (const auto& pair : pair_costs)
+    const cv::Mat3b merges_plot = plotMerges(groups, colors, pair_costs);
+    cv::imshow("merges", merges_plot);
+
+    if (groups.getNumGroups() == 6)
     {
-        // This pair wants to merge the color groups of pair.a and pair.b
-        size_t root_a = groups.findRoot(pair.a);
-        size_t root_b = groups.findRoot(pair.b);
-        if (root_a == root_b)
+        // We can now assign sides because we have exactly 6 groups.
+        std::vector<size_t> center_groups(6);
+        for (int center = 0; center < 6; ++center)
         {
-            // Already merged.
-            continue;
+            center_groups[center] = groups.findRoot(4 + center * 9);
         }
-
-        if (!isLegalMerge(groups, adjacency, root_a, root_b))
+        std::vector<size_t> label_sides(colors.size());
+        for (size_t i = 0; i < colors.size(); ++i)
         {
-            continue;
+            size_t root_i = groups.findRoot(i);
+            auto center_it = std::find(center_groups.begin(), center_groups.end(), root_i);
+            label_sides[i] = std::distance(center_groups.begin(), center_it);
         }
-
-        // Merge groups.
-        groups.mergeNodes(root_a, root_b);
-
-        if (groups.getNumGroups() == 6)
-        {
-            cv::imshow("merges", plotMerges(groups, colors, pair_costs));
-
-            // We can now assign sides because we have exactly 6 groups.
-            std::vector<size_t> center_groups(6);
-            for (int center = 0; center < 6; ++center)
-            {
-                center_groups[center] = groups.findRoot(4 + center * 9);
-            }
-            std::vector<size_t> label_sides(colors.size());
-            for (size_t i = 0; i < colors.size(); ++i)
-            {
-                size_t root_i = groups.findRoot(i);
-                auto center_it = std::find(center_groups.begin(), center_groups.end(), root_i);
-                label_sides[i] = std::distance(center_groups.begin(), center_it);
-            }
-            return label_sides;
-        }
+        return label_sides;
     }
 
     // Failed to assign colors.
     printf("Failed to assign colors to sides. Got stuck at %lu groups.", groups.getNumGroups());
     fflush(stdout);
-    cv::Mat3b merges_plot = plotMerges(groups, colors, pair_costs);
     cv::imshow("merges", merges_plot);
     while ((cv::waitKey() & 255) != 27)
     {
