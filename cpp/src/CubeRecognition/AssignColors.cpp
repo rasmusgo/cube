@@ -139,6 +139,89 @@ private:
     size_t num_groups;
 };
 
+bool isLegalMerge(
+    GroupMerger& io_groups,
+    const std::vector<std::vector<size_t>>& adjacency,
+    size_t root_a, size_t root_b)
+{
+    // We are not allowed to merge the groups if it would create an invalid pair somewhere.
+    // The two groups must therefore not both be present on the same cubie anywhere.
+    size_t count_a = 0;
+    size_t count_b = 0;
+    for (size_t i = 0; i < adjacency.size(); ++i)
+    {
+        size_t root_i = io_groups.findRoot(i);
+        if (root_i == root_a)
+        {
+            ++count_a;
+            for (size_t j : adjacency[i])
+            {
+                size_t root_j = io_groups.findRoot(j);
+                if (root_j == root_b)
+                {
+                    // Merging these nodes would cause a problem.
+                    return false;
+                }
+            }
+        }
+        if (root_i == root_b)
+        {
+            ++count_b;
+        }
+    }
+
+    if (count_a + count_b > 9)
+    {
+        // Merging these nodes would cause a group with more than 9 labels.
+        return false;
+    }
+
+    return true;
+}
+
+cv::Mat3b plotMerges(
+    GroupMerger& io_groups,
+    const std::vector<cv::Scalar>& colors,
+    const std::vector<PairCost>& pair_costs)
+{
+    // There will be 8 merges per color times 6 colors. 8*6*25 = 1200
+    cv::Mat3b canvas(cv::Size(1200, 50), cv::Vec3b(0,0,0));
+    size_t merge_count = 0;
+
+    GroupMerger groups(colors.size());
+
+    for (const auto& pair : pair_costs)
+    {
+        // This pair wants to merge the color groups of pair.a and pair.b
+        size_t root_a = groups.findRoot(pair.a);
+        size_t root_b = groups.findRoot(pair.b);
+        if (root_a == root_b)
+        {
+            // Already merged.
+            continue;
+        }
+
+        // Test if these got merged in the final solution.
+        size_t final_root_a = io_groups.findRoot(pair.a);
+        size_t final_root_b = io_groups.findRoot(pair.b);
+        if (final_root_a == final_root_b)
+        {
+            // This got merged.
+            groups.mergeNodes(root_a, root_b);
+
+            cv::rectangle(canvas, cv::Rect(merge_count * 25, 0,  25, 25), colors[pair.a], cv::FILLED);
+            cv::rectangle(canvas, cv::Rect(merge_count * 25, 25, 25, 25), colors[pair.b], cv::FILLED);
+            std::stringstream ss1;
+            std::stringstream ss2;
+            ss1 << idToCubie(pair.a);
+            ss2 << idToCubie(pair.b);
+            cv::putText(canvas, ss1.str(), cv::Point(merge_count * 25, 18), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
+            cv::putText(canvas, ss2.str(), cv::Point(merge_count * 25, 43), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
+            ++merge_count;
+        }
+    }
+    return canvas;
+}
 
 /**
  * Assign sides to colors by grouping similar colors while respecting cubie constraints.
@@ -174,10 +257,6 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
 
     std::sort(pair_costs.begin(), pair_costs.end());
 
-    // There will be 8 merges per color times 6 colors. 8*6*25 = 1200
-    cv::Mat3b canvas(cv::Size(1200, 50), cv::Vec3b(0,0,0));
-    size_t merge_count = 0;
-
     GroupMerger groups(colors.size());
 
     for (const auto& pair : pair_costs)
@@ -191,49 +270,9 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
             continue;
         }
 
-        // We are not allowed to merge the groups if it would create an invalid pair somewhere.
-        // The two groups must therefore not both be present on the same cubie anywhere.
-        size_t count_a = 0;
-        size_t count_b = 0;
-        for (size_t i = 0; i < adjacency.size(); ++i)
+        if (!isLegalMerge(groups, adjacency, root_a, root_b))
         {
-            size_t root_i = groups.findRoot(i);
-            if (root_i == root_a)
-            {
-                ++count_a;
-                for (size_t j : adjacency[i])
-                {
-                    size_t root_j = groups.findRoot(j);
-                    if (root_j == root_b)
-                    {
-                        // Merging these nodes would cause a problem.
-                        goto ILLEGAL_MERGE;
-                    }
-                }
-            }
-            if (root_i == root_b)
-            {
-                ++count_b;
-            }
-        }
-
-        if (count_a + count_b > 9)
-        {
-            // Merging these nodes would cause a group with more than 9 labels.
-            goto ILLEGAL_MERGE;
-        }
-
-
-        {
-            cv::rectangle(canvas, cv::Rect(merge_count * 25, 0,  25, 25), colors[pair.a], cv::FILLED);
-            cv::rectangle(canvas, cv::Rect(merge_count * 25, 25, 25, 25), colors[pair.b], cv::FILLED);
-            std::stringstream ss1;
-            std::stringstream ss2;
-            ss1 << idToCubie(pair.a);
-            ss2 << idToCubie(pair.b);
-            cv::putText(canvas, ss1.str(), cv::Point(merge_count * 25, 18), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-            cv::putText(canvas, ss2.str(), cv::Point(merge_count * 25, 43), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-            ++merge_count;
+            continue;
         }
 
         // Merge groups.
@@ -241,7 +280,7 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
 
         if (groups.getNumGroups() == 6)
         {
-            cv::imshow("merges", canvas);
+            cv::imshow("merges", plotMerges(groups, colors, pair_costs));
 
             // We can now assign sides because we have exactly 6 groups.
             std::vector<size_t> center_groups(6);
@@ -258,13 +297,16 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
             }
             return label_sides;
         }
-
-    ILLEGAL_MERGE:
-        continue;
     }
 
     // Failed to assign colors.
     printf("Failed to assign colors to sides. Got stuck at %lu groups.", groups.getNumGroups());
     fflush(stdout);
+    cv::Mat3b merges_plot = plotMerges(groups, colors, pair_costs);
+    cv::imshow("merges", merges_plot);
+    while ((cv::waitKey() & 255) != 27)
+    {
+        cv::imshow("merges", merges_plot);
+    }
     exit(-1);
 }
