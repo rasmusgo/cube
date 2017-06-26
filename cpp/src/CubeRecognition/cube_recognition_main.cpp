@@ -370,6 +370,36 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
     }
 }
 
+void showLabelColors(
+    const std::vector<size_t>& label_sides,
+    const std::vector<cv::Scalar>& label_colors)
+{
+    cv::Mat3b canvas(cv::Size(25 * 3.1 * 6, 25 * 3), cv::Vec3b(0,0,0));
+
+    for (int i = 0; i < 6*9; ++i)
+    {
+        int side = i / 9;
+        int row = (i % 9) / 3;
+        int col = i % 3;
+
+        cv::Rect rect(cv::Point(25 * (side * 3.1 + col), 25 * row), cv::Size(25,25));
+        cv::rectangle(canvas, rect, label_colors[i], cv::FILLED);
+        cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
+    }
+
+    for (int i = 0; i < 6*9; ++i)
+    {
+        int side = i / 9;
+        int row = (i % 9) / 3;
+        int col = i % 3;
+
+        cv::Point text_bl(25 * (side * 3.1 + col) + 2, 25 * row + 15);
+        cv::putText(canvas, generateText(i, label_sides), text_bl,
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
+    }
+    cv::imshow("colors", canvas);
+}
+
 int main()
 {
     //recordVideoFrames()
@@ -413,30 +443,7 @@ int main()
     cv::imshow("top", canvas_top);
     cv::imshow("bottom", canvas_bottom);
 
-    cv::Mat3b canvas(cv::Size(25 * 3.1 * 6, 25 * 3), cv::Vec3b(0,0,0));
-
-    for (int i = 0; i < 6*9; ++i)
-    {
-        int side = i / 9;
-        int row = (i % 9) / 3;
-        int col = i % 3;
-
-        cv::Rect rect(cv::Point(25 * (side * 3.1 + col), 25 * row), cv::Size(25,25));
-        cv::rectangle(canvas, rect, label_colors[i], cv::FILLED);
-        cv::rectangle(canvas, rect, cv::Scalar(0,0,0), 1);
-    }
-
-    for (int i = 0; i < 6*9; ++i)
-    {
-        int side = i / 9;
-        int row = (i % 9) / 3;
-        int col = i % 3;
-
-        cv::Point text_bl(25 * (side * 3.1 + col) + 2, 25 * row + 15);
-        cv::putText(canvas, generateText(i, label_sides), text_bl,
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-    }
-    cv::imshow("colors", canvas);
+    showLabelColors(label_sides, label_colors);
 
     const std::vector<size_t> kociemba_order = {
         18, 19, 20, 21, 22, 23, 24, 25, 26, // U
