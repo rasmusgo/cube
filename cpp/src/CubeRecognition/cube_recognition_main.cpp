@@ -160,6 +160,106 @@ void recordVideoFrames()
     }
 }
 
+cv::Mat1f renderContribution(double score, cv::Size image_size,
+    const std::vector<cv::Point2f>& predicted_corners)
+{
+    cv::Mat1f contribution(image_size, 0.f);
+    for (int i = 0; i < predicted_corners.size(); i += 4)
+    {
+        std::vector<cv::Point> corners = {
+            predicted_corners[i + 0],
+            predicted_corners[i + 1],
+            predicted_corners[i + 2],
+            predicted_corners[i + 3],
+        };
+        cv::polylines(contribution, corners, true, cv::Scalar(score * score));
+    }
+    return contribution;
+}
+
+void showPredictedCorners(
+    const cv::Mat3b& img,
+    const std::vector<cv::Point2f>& predicted_corners,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const size_t index)
+{
+    cv::Mat3b canvas = img * 0.25f;
+    for (int i = 0; i < predicted_corners.size(); i += 4)
+    {
+        std::vector<cv::Point> corners = {
+            predicted_corners[i + 0],
+            predicted_corners[i + 1],
+            predicted_corners[i + 2],
+            predicted_corners[i + 3],
+        };
+        cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
+    }
+
+    {
+        std::vector<cv::Point> corners = {
+            detected_corners[index / 9][0],
+            detected_corners[index / 9][1],
+            detected_corners[index / 9][2],
+            detected_corners[index / 9][3],
+        };
+        cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
+    }
+
+    cv::imshow("predicted labels", canvas);
+}
+
+void showDetectedLabels(
+    const cv::Mat3b& img,
+    const std::vector<LabelContour>& labels,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners)
+{
+    cv::Mat3b canvas = img * 0.25f;
+    drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
+
+    for (const auto& corners : detected_corners)
+    {
+        cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
+        for (size_t i = 0; i < corners.size(); ++i)
+        {
+            char text[12];
+            sprintf(text, "%lu", i);
+            cv::putText(canvas, text, corners[i],
+                cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
+        }
+    }
+
+    cv::imshow("detected labels", canvas);
+}
+
+void handleKeys(int& io_frame_i, int key)
+{
+    if (key == 32) // space
+    {
+        ++io_frame_i;
+    }
+    if (key == 83 || key == 3) // right arrow
+    {
+        ++io_frame_i;
+    }
+    if (key == 82) // up arrow
+    {
+
+    }
+    if (key == 81 || key == 2) // left arrow
+    {
+        --io_frame_i;
+    }
+    if (key == 84 || key == 1) // down arrow
+    {
+
+    }
+    if (key != 255)
+    {
+        printf("Key: %d\n", key);
+        fflush(stdout);
+    }
+}
+
 void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     // Start with a single hypotheses of the cube.
@@ -220,22 +320,11 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             cv::Mat1f accumulation(img.size(), 0.f);
             for (const auto& cam : all_camera_candidates)
             {
-                cv::Mat1f contribution(img.size(), 0.f);
                 std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
                 double score = scorePredictedCorners(predicted_corners, detected_corners);
                 camera_scores.push_back(score);
 
-                for (int i = 0; i < predicted_corners.size(); i += 4)
-                {
-                    std::vector<cv::Point> corners = {
-                        predicted_corners[i + 0],
-                        predicted_corners[i + 1],
-                        predicted_corners[i + 2],
-                        predicted_corners[i + 3],
-                    };
-                    cv::polylines(contribution, corners, true, cv::Scalar(score * score));
-                }
-                accumulation += contribution;
+                accumulation += renderContribution(score, img.size(), predicted_corners);
             }
             double minval;
             double maxval;
@@ -265,49 +354,10 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             const Camera& cam = all_camera_candidates[index];
             std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
 
-            cv::Mat3b canvas = img * 0.25f;
-            for (int i = 0; i < predicted_corners.size(); i += 4)
-            {
-                std::vector<cv::Point> corners = {
-                    predicted_corners[i + 0],
-                    predicted_corners[i + 1],
-                    predicted_corners[i + 2],
-                    predicted_corners[i + 3],
-                };
-                cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
-            }
-
-            {
-                std::vector<cv::Point> corners = {
-                    detected_corners[index / 9][0],
-                    detected_corners[index / 9][1],
-                    detected_corners[index / 9][2],
-                    detected_corners[index / 9][3],
-                };
-                cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
-            }
-
-            cv::imshow("predicted labels", canvas);
+            showPredictedCorners(img, predicted_corners, detected_corners, index);
         }
 
-        {
-            cv::Mat3b canvas = img * 0.25f;
-            drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
-
-            for (const auto& corners : detected_corners)
-            {
-                cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
-                for (size_t i = 0; i < corners.size(); ++i)
-                {
-                    char text[12];
-                    sprintf(text, "%lu", i);
-                    cv::putText(canvas, text, corners[i],
-                        cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
-                }
-            }
-
-            cv::imshow("detected labels", canvas);
-        }
+        showDetectedLabels(img, labels, detected_corners);
 
         if (int key = cv::waitKey(0) & 255)
         {
@@ -315,31 +365,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             {
                 break; // stop by pressing ESC
             }
-            if (key == 32) // space
-            {
-                ++frame_i;
-            }
-            if (key == 83) // right arrow
-            {
-                ++frame_i;
-            }
-            if (key == 82) // up arrow
-            {
-
-            }
-            if (key == 81) // left arrow
-            {
-                --frame_i;
-            }
-            if (key == 84) // down arrow
-            {
-
-            }
-            if (key != 255)
-            {
-                printf("Key: %d\n", key);
-                fflush(stdout);
-            }
+            handleKeys(frame_i, key);
         }
     }
 }
