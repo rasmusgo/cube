@@ -125,7 +125,7 @@ std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cub
                 double w_b = relative_likelihood_b / sum_relative_likelihood;
                 ProbabalisticCube::PoseEstimateVec weighted_mean =
                     w_a * existing.pose_estimate + w_b * prediction.pose_estimate;
-                // TODO(Rasmus): Check if a better formula for weighted coveriance is needed.
+                // TODO(Rasmus): Check if a better formula for weighted covariance is needed.
                 ProbabalisticCube::PoseCovarianceMat weighted_covariance =
                     w_a * existing.pose_covariance + w_b * prediction.pose_covariance;
                 existing.pose_estimate = weighted_mean;
