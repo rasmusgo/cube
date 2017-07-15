@@ -181,8 +181,7 @@ cv::Mat1f renderContribution(double score, cv::Size image_size,
 void showPredictedCorners(
     const cv::Mat3b& img,
     const std::vector<cv::Point2f>& predicted_corners,
-    const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    const size_t index)
+    const std::vector<cv::Point2f>& detected_corners)
 {
     cv::Mat3b canvas = img * 0.25f;
     for (int i = 0; i < predicted_corners.size(); i += 4)
@@ -198,10 +197,10 @@ void showPredictedCorners(
 
     {
         std::vector<cv::Point> corners = {
-            detected_corners[index / 9][0],
-            detected_corners[index / 9][1],
-            detected_corners[index / 9][2],
-            detected_corners[index / 9][3],
+            detected_corners[0],
+            detected_corners[1],
+            detected_corners[2],
+            detected_corners[3],
         };
         cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
     }
@@ -327,7 +326,8 @@ void showBestCameraCandidate(
         const Camera& cam = all_camera_candidates[index];
         std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
 
-        showPredictedCorners(img, predicted_corners, detected_corners, index);
+        // FIXME(Rasmus): Replace the hacky index / 9 with something more proper.
+        showPredictedCorners(img, predicted_corners, detected_corners[index / 9]);
     }
 }
 
