@@ -260,6 +260,107 @@ void handleKeys(int& io_frame_i, int key)
     }
 }
 
+void printMostLikelyCubes(const std::vector<ProbabalisticCube>& cube_hypotheses)
+{
+    printf("Most likely cubes:\n");
+    for (int i = 0; i < cube_hypotheses.size() && i < 5; ++i)
+    {
+        const ProbabalisticCube& cube = cube_hypotheses[i];
+        const std::string permutation = cube.cube_permutation.to_String();
+        const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
+        printf("%d: %s %3.5f%%\n", i, permutation.c_str(), likelihood_percent);
+    }
+}
+
+std::vector<double> scoreCameras(
+    const std::vector<Camera>& all_camera_candidates,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    float label_width, const cv::Mat3b& img)
+{
+    std::vector<double> camera_scores;
+    camera_scores.reserve(all_camera_candidates.size());
+    cv::Mat1f accumulation(img.size(), 0.f);
+    for (const auto& cam : all_camera_candidates)
+    {
+        std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
+        double score = scorePredictedCorners(predicted_corners, detected_corners);
+        camera_scores.push_back(score);
+
+        accumulation += renderContribution(score, img.size(), predicted_corners);
+    }
+    double minval;
+    double maxval;
+    cv::minMaxLoc(accumulation, &minval, &maxval);
+    cv::imshow("accumulation", accumulation / maxval);
+
+    return camera_scores;
+}
+
+void printCameraScores(const std::vector<double>& camera_scores)
+{
+    printf("Camera scores:\n");
+    std::vector<double> sorted_camera_scores = camera_scores;
+    std::sort(sorted_camera_scores.begin(), sorted_camera_scores.end());
+    std::reverse(sorted_camera_scores.begin(), sorted_camera_scores.end());
+    printf("Min score: %f max score: %f\n", sorted_camera_scores.back(), sorted_camera_scores.front());
+
+    for (int i = 0; i < sorted_camera_scores.size() && i < 5; ++i)
+    {
+        double score = sorted_camera_scores[i];
+        printf("#%d score: %f\n", i + 1, score);
+    }
+}
+
+void showBestCameraCandidate(
+    const std::vector<Camera>& all_camera_candidates,
+    const std::vector<double>& camera_scores,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    float label_width, const cv::Mat3b& img)
+{
+    if (!all_camera_candidates.empty())
+    {
+        const size_t index = std::distance(camera_scores.begin(),
+            std::max_element(camera_scores.begin(), camera_scores.end()));
+        printf("detected_corners size: %lu index: %lu\n", detected_corners.size(), index);
+
+        const Camera& cam = all_camera_candidates[index];
+        std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
+
+        showPredictedCorners(img, predicted_corners, detected_corners, index);
+    }
+}
+
+std::vector<ProbabalisticCube> update(
+    const std::vector<ProbabalisticCube>& cube_hypotheses,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+{
+    std::vector<Camera> all_camera_candidates;
+    for (const auto& corners : detected_corners)
+    {
+        const std::vector<Camera> cameras =
+            predictCameraPosesForLabel(calibrated_camera, corners, label_width);
+        all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
+    }
+
+    if (all_camera_candidates.empty())
+    {
+        printf("No cameras predicted!");
+        return cube_hypotheses;
+    }
+
+    const std::vector<double> camera_scores =
+        scoreCameras(all_camera_candidates, detected_corners, label_width, img);
+
+    printCameraScores(camera_scores);
+
+    showBestCameraCandidate(all_camera_candidates, camera_scores, detected_corners, label_width, img);
+
+    // TODO(Rasmus): Create new updated hypotheses!
+    std::vector<ProbabalisticCube> updated_cube_hypotheses = cube_hypotheses;
+    return updated_cube_hypotheses;
+}
+
 void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     // Start with a single hypotheses of the cube.
@@ -295,67 +396,12 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         }
         prune(cube_hypotheses, max_hypotheses);
 
-        printf("Most likely cubes:\n");
-        for (int i = 0; i < cube_hypotheses.size() && i < 5; ++i)
-        {
-            const ProbabalisticCube& cube = cube_hypotheses[i];
-            const std::string permutation = cube.cube_permutation.to_String();
-            const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
-            printf("%d: %s %3.5f%%\n", i, permutation.c_str(), likelihood_percent);
-        }
+        printMostLikelyCubes(cube_hypotheses);
 
-        std::vector<LabelContour> labels = findLabelContours(img, 12, true);
-        std::vector<std::vector<cv::Point2f>> detected_corners = findLabelCorners(labels);
+        const std::vector<LabelContour> labels = findLabelContours(img, 12, true);
+        const std::vector<std::vector<cv::Point2f>> detected_corners = findLabelCorners(labels);
 
-        std::vector<Camera> all_camera_candidates;
-        for (const auto& corners : detected_corners)
-        {
-            std::vector<Camera> cameras = predictCameraPosesForLabel(calibrated_camera, corners, label_width);
-            all_camera_candidates.insert(all_camera_candidates.end(), cameras.begin(), cameras.end());
-        }
-
-        std::vector<double> camera_scores;
-        camera_scores.reserve(all_camera_candidates.size());
-        {
-            cv::Mat1f accumulation(img.size(), 0.f);
-            for (const auto& cam : all_camera_candidates)
-            {
-                std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
-                double score = scorePredictedCorners(predicted_corners, detected_corners);
-                camera_scores.push_back(score);
-
-                accumulation += renderContribution(score, img.size(), predicted_corners);
-            }
-            double minval;
-            double maxval;
-            cv::minMaxLoc(accumulation, &minval, &maxval);
-            cv::imshow("accumulation", accumulation / maxval);
-        }
-        if (!camera_scores.empty())
-        {
-            std::vector<double> sorted_camera_scores = camera_scores;
-            std::sort(sorted_camera_scores.begin(), sorted_camera_scores.end());
-            std::reverse(sorted_camera_scores.begin(), sorted_camera_scores.end());
-            printf("Min score: %f max score: %f\n", sorted_camera_scores.back(), sorted_camera_scores.front());
-
-            for (int i = 0; i < sorted_camera_scores.size() && i < 5; ++i)
-            {
-                double score = sorted_camera_scores[i];
-                printf("#%d score: %f\n", i + 1, score);
-            }
-        }
-
-        if (!all_camera_candidates.empty())
-        {
-            const size_t index = std::distance(camera_scores.begin(),
-                std::max_element(camera_scores.begin(), camera_scores.end()));
-            printf("detected_corners size: %lu index: %lu\n", detected_corners.size(), index);
-
-            const Camera& cam = all_camera_candidates[index];
-            std::vector<cv::Point2f> predicted_corners = projectCubeCorners(cam, label_width);
-
-            showPredictedCorners(img, predicted_corners, detected_corners, index);
-        }
+        cube_hypotheses = update(cube_hypotheses, detected_corners, calibrated_camera, label_width, img);
 
         showDetectedLabels(img, labels, detected_corners);
 
