@@ -13,10 +13,10 @@ struct ProbabalisticCube
     // * rotation (U, R, F)
     // * side rotations (U R F D' L' B')
     static const int D = 12;
-    using PoseEstimateVec   = cv::Vec<float, D>;
-    using PoseCovarianceMat = cv::Matx<float, D, D>;
-    PoseEstimateVec   pose_estimate{0, 0, 0};
-    PoseCovarianceMat pose_covariance{PoseCovarianceMat::eye()};
+    using PoseVector = cv::Vec<float, D>;
+    using PoseMatrix = cv::Matx<float, D, D>;
+    PoseVector pose_estimate{0, 0, 0};
+    PoseMatrix pose_covariance{PoseMatrix::eye()};
 
     double relativeLogLikelihoodOfRotations();
 };

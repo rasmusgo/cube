@@ -59,7 +59,7 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
     // * Face moves (6 faces, +/- 90 degrees = 12 moves)
 
     ProbabalisticCube child_template = parent;
-    child_template.pose_covariance += ProbabalisticCube::PoseCovarianceMat::eye() * 0.1;
+    child_template.pose_covariance += ProbabalisticCube::PoseMatrix::eye() * 0.1;
 
     std::vector<ProbabalisticCube> children;
     for (int i = 0; i < 3; ++i)
@@ -106,44 +106,16 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
 
 std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cubes)
 {
-    std::map<std::string, ProbabalisticCube> predictions_map;
+    std::vector<ProbabalisticCube> all_predictions;
     for (auto& cube : cubes)
     {
+        const std::vector<ProbabalisticCube> predictions;
         for (const ProbabalisticCube& prediction : generatePredictions(cube))
         {
-            std::string permutation_string = prediction.cube_permutation.to_String();
-            auto it = predictions_map.find(permutation_string);
-            if (it != predictions_map.end())
-            {
-                ProbabalisticCube& existing = it->second;
-                // Normalize log likelihoods before exp() for numerical stability.
-                double max_log_likelihood = std::max(existing.log_likelihood, prediction.log_likelihood);
-                double relative_likelihood_a = exp(existing.log_likelihood - max_log_likelihood);
-                double relative_likelihood_b = exp(prediction.log_likelihood - max_log_likelihood);
-                double sum_relative_likelihood = relative_likelihood_a + relative_likelihood_b;
-                double w_a = relative_likelihood_a / sum_relative_likelihood;
-                double w_b = relative_likelihood_b / sum_relative_likelihood;
-                ProbabalisticCube::PoseEstimateVec weighted_mean =
-                    w_a * existing.pose_estimate + w_b * prediction.pose_estimate;
-                // TODO(Rasmus): Check if a better formula for weighted covariance is needed.
-                ProbabalisticCube::PoseCovarianceMat weighted_covariance =
-                    w_a * existing.pose_covariance + w_b * prediction.pose_covariance;
-                existing.pose_estimate = weighted_mean;
-                existing.pose_covariance = weighted_covariance;
-                existing.log_likelihood = max_log_likelihood + log(sum_relative_likelihood);
-            }
-            else
-            {
-                predictions_map.insert({permutation_string, prediction});
-            }
+            all_predictions.push_back(prediction);
         }
     }
-    std::vector<ProbabalisticCube> predictions_vector;
-    for (auto& it : predictions_map)
-    {
-        predictions_vector.push_back(std::move(it.second));
-    }
-    return predictions_vector;
+    return all_predictions;
 }
 
 void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)

@@ -243,6 +243,14 @@ std::vector<Camera> predictCameraPosesForLabel(
         cv::solvePnP(points3d, label_corners,
             cam.camera_matrix, cam.dist_coeffs,
             new_cam.rvec, new_cam.tvec);
+
+        // Compute certainty of rotation and translation
+        cv::Mat J;
+        std::vector<cv::Point2f> p; // dummy output vector
+        cv::projectPoints(points3d, new_cam.rvec, new_cam.tvec,
+            new_cam.camera_matrix, new_cam.dist_coeffs, p, J);
+        new_cam.JtJ = cv::Mat(J.t() * J, cv::Rect(0, 0, 6, 6));
+
         cam_candidates.push_back(std::move(new_cam));
     }
     return cam_candidates;

@@ -13,6 +13,7 @@
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
 
+const size_t kMaxNumHypotheses = 1 + 6 * 3 ; // 216
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
 void setupWindows(const cv::Size& img_size)
@@ -330,6 +331,68 @@ void showBestCameraCandidate(
     }
 }
 
+double logNormPdf(const cv::Vec6d delta, const cv::Matx66d& JtJ)
+{
+    const double tau = 2.0 * M_PI;
+    return -0.5 * ((delta.t() * JtJ * delta)[0] + std::log(cv::determinant(tau * JtJ.inv())));
+}
+
+ProbabalisticCube updateCube(const ProbabalisticCube& cube, const Camera& camera)
+{
+    using PoseMatrix = ProbabalisticCube::PoseMatrix;
+    using PoseVector = ProbabalisticCube::PoseVector;
+    const PoseMatrix cube_pose_information_matrix = cube.pose_covariance.inv();
+    const PoseVector cube_pose_information_vector = cube_pose_information_matrix * cube.pose_estimate;
+
+    // FIXME(Rasmus): change coordinate systems properly
+    // camera.JtJ has order: rotation, position
+    // cube pose has order: position, rotation, side rotations
+    const cv::Vec6d camera_information_vector = camera.JtJ * cv::Vec6d(
+        camera.rvec[0], camera.rvec[1], camera.rvec[2],
+        camera.tvec[0], camera.tvec[1], camera.tvec[2]);
+
+    // Add information from camera to cube pose.
+    PoseMatrix updated_cube_pose_information_matrix = cube_pose_information_matrix;
+    PoseVector updated_cube_pose_information_vector = cube_pose_information_vector;
+    for (int pose_i = 0; pose_i < 6; ++pose_i)
+    {
+        int cam_i = (pose_i + 3) % 6;
+        for (int pose_j = 0; pose_j < 6; ++pose_j)
+        {
+            int cam_j = (pose_j + 3) % 6;
+            updated_cube_pose_information_matrix(pose_i, pose_j) += camera.JtJ(cam_i, cam_j);
+        }
+        updated_cube_pose_information_vector(pose_i) += camera_information_vector(cam_i);
+    }
+
+    ProbabalisticCube updated_cube = cube;
+    updated_cube.pose_covariance = updated_cube_pose_information_matrix.inv();
+    updated_cube.pose_estimate = updated_cube_pose_information_matrix.inv() * updated_cube_pose_information_vector;
+
+    // FIXME(Rasmus): Make proper delta considering the coordinate systems of the cube and camera.
+    const cv::Vec6d delta_in_camera(
+        cube.pose_estimate[3] - camera.rvec[0],
+        cube.pose_estimate[4] - camera.rvec[1],
+        cube.pose_estimate[5] - camera.rvec[2],
+        cube.pose_estimate[0] - camera.tvec[0],
+        cube.pose_estimate[1] - camera.tvec[1],
+        cube.pose_estimate[2] - camera.tvec[2]);
+
+    cv::Matx66d cube_JtJ;
+    for (int pose_i = 0; pose_i < 6; ++pose_i)
+    {
+        int cam_i = (pose_i + 3) % 6;
+        for (int pose_j = 0; pose_j < 6; ++pose_j)
+        {
+            int cam_j = (pose_j + 3) % 6;
+            cube_JtJ(cam_i, cam_j) = cube_pose_information_matrix(pose_i, pose_j);
+        }
+    }
+    updated_cube.log_likelihood += logNormPdf(delta_in_camera, camera.JtJ);
+    updated_cube.log_likelihood += logNormPdf(delta_in_camera, cube_JtJ);
+    return updated_cube;
+}
+
 std::vector<ProbabalisticCube> update(
     const std::vector<ProbabalisticCube>& cube_hypotheses,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
@@ -349,6 +412,8 @@ std::vector<ProbabalisticCube> update(
         return cube_hypotheses;
     }
 
+    // TODO(Rasmus): Merge camera predictions.
+
     const std::vector<double> camera_scores =
         scoreCameras(all_camera_candidates, detected_corners, label_width, img);
 
@@ -356,8 +421,17 @@ std::vector<ProbabalisticCube> update(
 
     showBestCameraCandidate(all_camera_candidates, camera_scores, detected_corners, label_width, img);
 
-    // TODO(Rasmus): Create new updated hypotheses!
-    std::vector<ProbabalisticCube> updated_cube_hypotheses = cube_hypotheses;
+    std::vector<ProbabalisticCube> updated_cube_hypotheses;
+    for (const auto& cube : cube_hypotheses)
+    {
+        for (const auto& camera : all_camera_candidates)
+        {
+            const ProbabalisticCube updated_cube = updateCube(cube, camera);
+            updated_cube_hypotheses.push_back(updated_cube);
+        }
+    }
+    normalizeLikelihood(updated_cube_hypotheses);
+
     return updated_cube_hypotheses;
 }
 
@@ -378,32 +452,49 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             break;
         }
 
-        const size_t num_hypotheses_before = cube_hypotheses.size();
-        printf("Num hypotheses before: %lu\n", num_hypotheses_before);
-
-        cube_hypotheses = predict(cube_hypotheses);
-        const size_t num_hypotheses_after = cube_hypotheses.size();
-        printf("Num hypotheses after:  %lu\n", num_hypotheses_after);
-        printf("Brancing factor:  %f\n", double(num_hypotheses_after) / num_hypotheses_before);
-
-        const size_t max_hypotheses = 216;
-        if (num_hypotheses_after > max_hypotheses)
         {
-            const size_t pruned_num = num_hypotheses_after - max_hypotheses;
-            const double removed_percentage = pruned_num * 100.0 / num_hypotheses_after;
-            printf("Pruning to %lu hypotheses, removing %lu (%.1f%%) hypotheses.\n",
-                max_hypotheses, pruned_num, removed_percentage);
-        }
-        prune(cube_hypotheses, max_hypotheses);
+            const size_t num_hypotheses_before = cube_hypotheses.size();
+            printf("Num hypotheses before predict: %lu\n", num_hypotheses_before);
 
-        printMostLikelyCubes(cube_hypotheses);
+            cube_hypotheses = predict(cube_hypotheses);
+            const size_t num_hypotheses_after = cube_hypotheses.size();
+            printf("Num hypotheses after predict:  %lu\n", num_hypotheses_after);
+            printf("Brancing factor:  %f\n", double(num_hypotheses_after) / num_hypotheses_before);
+
+            if (num_hypotheses_after > kMaxNumHypotheses)
+            {
+                const size_t pruned_num = num_hypotheses_after - kMaxNumHypotheses;
+                const double removed_percentage = pruned_num * 100.0 / num_hypotheses_after;
+                printf("Pruning to %lu hypotheses, removing %lu (%.1f%%) hypotheses.\n",
+                    kMaxNumHypotheses, pruned_num, removed_percentage);
+            }
+            prune(cube_hypotheses, kMaxNumHypotheses);
+            printMostLikelyCubes(cube_hypotheses);
+        }
 
         const std::vector<LabelContour> labels = findLabelContours(img, 12, true);
         const std::vector<std::vector<cv::Point2f>> detected_corners = findLabelCorners(labels);
-
-        cube_hypotheses = update(cube_hypotheses, detected_corners, calibrated_camera, label_width, img);
-
         showDetectedLabels(img, labels, detected_corners);
+
+        {
+            const size_t num_hypotheses_before = cube_hypotheses.size();
+            printf("Num hypotheses before update: %lu\n", num_hypotheses_before);
+
+            cube_hypotheses = update(cube_hypotheses, detected_corners, calibrated_camera, label_width, img);
+            const size_t num_hypotheses_after = cube_hypotheses.size();
+            printf("Num hypotheses after update:  %lu\n", num_hypotheses_after);
+            printf("Brancing factor:  %f\n", double(num_hypotheses_after) / num_hypotheses_before);
+
+            if (num_hypotheses_after > kMaxNumHypotheses)
+            {
+                const size_t pruned_num = num_hypotheses_after - kMaxNumHypotheses;
+                const double removed_percentage = pruned_num * 100.0 / num_hypotheses_after;
+                printf("Pruning to %lu hypotheses, removing %lu (%.1f%%) hypotheses.\n",
+                    kMaxNumHypotheses, pruned_num, removed_percentage);
+            }
+            prune(cube_hypotheses, kMaxNumHypotheses);
+            printMostLikelyCubes(cube_hypotheses);
+        }
 
         if (int key = cv::waitKey(0) & 255)
         {
