@@ -402,7 +402,7 @@ std::vector<ProbabalisticCube> update(
 
     if (all_camera_candidates.empty())
     {
-        printf("No cameras predicted!");
+        printf("No cameras predicted!\n");
         return cube_hypotheses;
     }
 

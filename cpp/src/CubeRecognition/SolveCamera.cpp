@@ -36,7 +36,7 @@ cv::Point3f idTo3d(int side, float id_x, float id_y)
     {
         return cv::Point3f(-id_x, -1.5f, id_y);
     }
-    printf("unsupported side in idTo3d: %d", side);
+    printf("unsupported side in idTo3d: %d\n", side);
     assert(false);
     exit(-1);
 }

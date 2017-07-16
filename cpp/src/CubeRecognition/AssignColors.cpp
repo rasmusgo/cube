@@ -53,7 +53,7 @@ int idToCubie(int id)
     {
         return coord_to_cubie(-id_y, -1, -id_x);
     }
-    printf("unsupported side in idToCubie: %d", side);
+    printf("unsupported side in idToCubie: %d\n", side);
     assert(false);
     exit(-1);
 }
@@ -321,7 +321,7 @@ std::vector<size_t> assignColorsToSides(const std::vector<cv::Scalar>& colors)
     }
 
     // Failed to assign colors.
-    printf("Failed to assign colors to sides. Got stuck at %lu groups.", groups.getNumGroups());
+    printf("Failed to assign colors to sides. Got stuck at %lu groups.\n", groups.getNumGroups());
     fflush(stdout);
     cv::imshow("merges", merges_plot);
     while ((cv::waitKey() & 255) != 27)
