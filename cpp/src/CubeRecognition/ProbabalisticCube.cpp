@@ -138,6 +138,52 @@ std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cub
 
 void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
 {
+    // Merge similar probability distributions
+    std::multimap<std::string, ProbabalisticCube> merged_cubes;
+    for (const ProbabalisticCube& cube : cubes)
+    {
+        const std::string cube_string = cube.cube_permutation.to_String();
+        auto equal_range = merged_cubes.equal_range(cube_string);
+        // Try to merge the cube with cubes from the equal_range, add new cube if not possible.
+        auto match = [&]()
+        {
+            for (auto it = equal_range.first; it != equal_range.second; ++it)
+            {
+                const double max_difference = 1.0e-6;
+                if (cv::norm(cube.pose_estimate, it->second.pose_estimate, cv::NORM_INF) > max_difference)
+                {
+                    continue;
+                }
+                if (cv::norm(cube.pose_covariance, it->second.pose_covariance, cv::NORM_INF) > max_difference)
+                {
+                    continue;
+                }
+                return it;
+            }
+            return equal_range.second;
+        }();
+
+        if (match != equal_range.second)
+        {
+            double max_log_likelihood = std::max(match->second.log_likelihood, cube.log_likelihood);
+            match->second.log_likelihood = max_log_likelihood + log(
+                exp(match->second.log_likelihood - max_log_likelihood) +
+                exp(cube.log_likelihood - max_log_likelihood));
+        }
+        else
+        {
+            merged_cubes.emplace(cube.cube_permutation.to_String(), cube);
+        }
+    }
+
+    printf("Removed %lu redundant cubes by merging\n", cubes.size() - merged_cubes.size());
+
+    cubes.clear();
+    for (const auto& it : merged_cubes)
+    {
+        cubes.push_back(it.second);
+    }
+
     // Sort most likely first.
     std::sort(cubes.begin(), cubes.end(), compareCubeLikelihoodsReversed);
     if (cubes.size() > max_num)
