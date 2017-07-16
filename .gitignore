@@ -3,6 +3,7 @@
 *.dep
 *.exe
 *.o
+*.trace
 *.zip
 .classpath
 .cproject
