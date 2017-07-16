@@ -437,6 +437,54 @@ std::vector<ProbabalisticCube> update(
     return updated_cube_hypotheses;
 }
 
+void showMostLikelyCube(
+    const std::vector<ProbabalisticCube>& cubes,
+    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+{
+    if (cubes.empty())
+    {
+        return;
+    }
+
+    const ProbabalisticCube& cube =
+        *std::max_element(cubes.begin(), cubes.end(), compareCubeLikelihoods);
+    Camera camera = calibrated_camera;
+    camera.tvec[0] = cube.pose_estimate[0];
+    camera.tvec[1] = cube.pose_estimate[1];
+    camera.tvec[2] = cube.pose_estimate[2];
+    camera.rvec[0] = cube.pose_estimate[3];
+    camera.rvec[1] = cube.pose_estimate[4];
+    camera.rvec[2] = cube.pose_estimate[5];
+    const std::vector<cv::Point2f> projected_corners = projectCubeCorners(camera, label_width);
+    cv::Mat3b canvas = img * 0.25f;
+    for (int i = 0; i < projected_corners.size(); i += 4)
+    {
+        std::vector<cv::Point> corners = {
+            projected_corners[i + 0],
+            projected_corners[i + 1],
+            projected_corners[i + 2],
+            projected_corners[i + 3],
+        };
+        cv::polylines(canvas, corners, true, cv::Scalar(0, 255, 255));
+    }
+    for (int i = 0; i < cube.pose_covariance.rows; ++i)
+    {
+        for (int j = 0; j < cube.pose_covariance.cols; ++j)
+        {
+            const double value = cube.pose_covariance(i, j);
+            const cv::Scalar red(0, 0, 255);
+            const cv::Scalar green(0, 255, 0);
+            const cv::Scalar blue(255, 0, 0);
+            const double t = std::sqrt(std::abs(value)) * 0.1;
+            const cv::Scalar contrast_color = value < 0 ? blue : red;
+            // TODO(Rasmus): Interpolate in linear space instead of sRGB.
+            const cv::Scalar color = green + (contrast_color - green) * t;
+            cv::rectangle(canvas, cv::Rect(j*10, i*10, 10, 10), color, cv::FILLED);
+        }
+    }
+    cv::imshow("most likely cube", canvas);
+}
+
 void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     // Start with a single hypotheses of the cube.
@@ -497,6 +545,8 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             prune(cube_hypotheses, kMaxNumHypotheses);
             printMostLikelyCubes(cube_hypotheses);
         }
+
+        showMostLikelyCube(cube_hypotheses, calibrated_camera, label_width, img);
 
         if (int key = cv::waitKey(0) & 255)
         {
