@@ -55,9 +55,9 @@ float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
 
 std::vector<LabelObservation> generateObservationsForLabel(
     const Camera& calibrated_camera,
-    const std::vector<cv::Point2f>& label_corners,
+    const size_t label_index,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    float label_width)
+    const float label_width)
 {
     const float half_width = label_width * 0.5f;
     const std::vector<std::vector<cv::Point3f>> candidate_points3d = [&half_width]()
@@ -85,7 +85,8 @@ std::vector<LabelObservation> generateObservationsForLabel(
     for (const auto& points3d : candidate_points3d)
     {
         LabelObservation observation;
-        cv::solvePnP(points3d, label_corners,
+        observation.label_index = label_index;
+        cv::solvePnP(points3d, detected_corners[label_index],
             calibrated_camera.camera_matrix, calibrated_camera.dist_coeffs,
             observation.rvec, observation.tvec);
 
@@ -198,19 +199,19 @@ void showBestLabelObservation(
 {
     if (!observations.empty())
     {
-        const size_t index = std::distance(observations.begin(),
-            std::max_element(observations.begin(), observations.end(),
-                [](const LabelObservation& a, const LabelObservation& b)
+        const LabelObservation& observation =
+            *std::max_element(observations.begin(), observations.end(),
+            [](const LabelObservation& a, const LabelObservation& b)
         {
             return a.score < b.score;
-        }));
-        printf("detected_corners size: %lu index: %lu\n", detected_corners.size(), index);
+        });
+        printf("detected_corners size: %lu label_index: %lu\n",
+            detected_corners.size(), observation.label_index);
 
         const std::vector<cv::Point2f> predicted_corners =
-            projectCubeCorners(calibrated_camera, observations[index], label_width);
+            projectCubeCorners(calibrated_camera, observation, label_width);
 
-        // FIXME(Rasmus): Replace the hacky index / 9 with something more proper.
-        showPredictedCorners(img, predicted_corners, detected_corners[index / 9]);
+        showPredictedCorners(img, predicted_corners, detected_corners[observation.label_index]);
     }
 }
 
@@ -274,10 +275,10 @@ std::vector<ProbabalisticCube> update(
     const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
 {
     std::vector<LabelObservation> all_observations;
-    for (const auto& corners : detected_corners)
+    for (size_t i = 0; i < detected_corners.size(); ++i)
     {
         const std::vector<LabelObservation> observations =
-            generateObservationsForLabel(calibrated_camera, corners, detected_corners, label_width);
+            generateObservationsForLabel(calibrated_camera, i, detected_corners, label_width);
         all_observations.insert(all_observations.end(), observations.begin(), observations.end());
     }
 

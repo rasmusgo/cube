@@ -9,18 +9,12 @@
 
 struct LabelObservation
 {
-    float score = 0;
-    //cv::Vec6d pose_vector; // rvec, tvec
+    size_t label_index = 0;
     cv::Vec3d rvec;
     cv::Vec3d tvec;
-    cv::Matx66d JtJ;
+    cv::Matx66d JtJ; // rvec, tvec
+    float score = 0;
 };
-
-std::vector<LabelObservation> generateObservationsForLabel(
-    const Camera& calibrated_camera,
-    const std::vector<cv::Point2f>& label_corners,
-    const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    float label_width);
 
 std::vector<ProbabalisticCube> update(
     const std::vector<ProbabalisticCube>& cube_hypotheses,
