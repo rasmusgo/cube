@@ -191,6 +191,18 @@ void showPredictedCorners(
     cv::imshow("predicted labels", canvas);
 }
 
+const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations)
+{
+    const LabelObservation& observation =
+        *std::max_element(observations.begin(), observations.end(),
+        [](const LabelObservation& a, const LabelObservation& b)
+    {
+        return a.score < b.score;
+    });
+
+    return observation;
+}
+
 void showBestLabelObservation(
     const Camera& calibrated_camera,
     const std::vector<LabelObservation>& observations,
@@ -199,12 +211,7 @@ void showBestLabelObservation(
 {
     if (!observations.empty())
     {
-        const LabelObservation& observation =
-            *std::max_element(observations.begin(), observations.end(),
-            [](const LabelObservation& a, const LabelObservation& b)
-        {
-            return a.score < b.score;
-        });
+        const LabelObservation& observation = findBestObservation(observations);
         printf("detected_corners size: %lu label_index: %lu\n",
             detected_corners.size(), observation.label_index);
 
@@ -269,10 +276,10 @@ ProbabalisticCube updateCube(const ProbabalisticCube& cube, const LabelObservati
     return updated_cube;
 }
 
-std::vector<ProbabalisticCube> update(
-    const std::vector<ProbabalisticCube>& cube_hypotheses,
+std::vector<LabelObservation> generateObservations(
+    const Camera& calibrated_camera,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+    const float label_width)
 {
     std::vector<LabelObservation> all_observations;
     for (size_t i = 0; i < detected_corners.size(); ++i)
@@ -284,21 +291,50 @@ std::vector<ProbabalisticCube> update(
 
     if (all_observations.empty())
     {
-        printf("No observed labels!\n");
+        return {};
+    }
+
+    const float max_score = findBestObservation(all_observations).score;
+    const float good_score = max_score * 0.5f;
+    std::vector<LabelObservation> good_observations;
+    for (const auto& observation : all_observations)
+    {
+        if (observation.score >= good_score)
+        {
+            good_observations.push_back(observation);
+        }
+    }
+
+    printObservationScores(all_observations);
+    printf("Selecting %lu of %lu observation candidates.\n",
+        good_observations.size(), all_observations.size());
+
+    return good_observations;
+}
+
+std::vector<ProbabalisticCube> update(
+    const std::vector<ProbabalisticCube>& cube_hypotheses,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+{
+    const std::vector<LabelObservation> observations =
+        generateObservations(calibrated_camera, detected_corners, label_width);
+
+    if (observations.empty())
+    {
+        printf("No observations!\n");
         return cube_hypotheses;
     }
 
     // TODO(Rasmus): Merge observations.
 
-    printObservationScores(all_observations);
-    showObservationContributions(calibrated_camera, all_observations, label_width, img);
-
-    showBestLabelObservation(calibrated_camera, all_observations, detected_corners, label_width, img);
+    showObservationContributions(calibrated_camera, observations, label_width, img);
+    showBestLabelObservation(calibrated_camera, observations, detected_corners, label_width, img);
 
     std::vector<ProbabalisticCube> updated_cube_hypotheses;
     for (const auto& cube : cube_hypotheses)
     {
-        for (const auto& observation : all_observations)
+        for (const auto& observation : observations)
         {
             const ProbabalisticCube updated_cube = updateCube(cube, observation);
             updated_cube_hypotheses.push_back(updated_cube);
