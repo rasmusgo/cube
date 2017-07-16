@@ -361,7 +361,7 @@ ProbabalisticCube updateCube(const ProbabalisticCube& cube, const Camera& camera
 
     ProbabalisticCube updated_cube = cube;
     updated_cube.pose_covariance = updated_cube_pose_information_matrix.inv();
-    updated_cube.pose_estimate = updated_cube_pose_information_matrix.inv() * updated_cube_pose_information_vector;
+    updated_cube.pose_estimate = updated_cube.pose_covariance * updated_cube_pose_information_vector;
 
     // FIXME(Rasmus): Make proper delta considering the coordinate systems of the cube and camera.
     const cv::Vec6d delta_in_camera(
