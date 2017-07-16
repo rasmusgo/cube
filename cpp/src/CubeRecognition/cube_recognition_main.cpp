@@ -346,26 +346,18 @@ ProbabalisticCube updateCube(const ProbabalisticCube& cube, const Camera& camera
     const PoseMatrix cube_pose_information_matrix = cube.pose_covariance.inv();
     const PoseVector cube_pose_information_vector = cube_pose_information_matrix * cube.pose_estimate;
 
-    // FIXME(Rasmus): change coordinate systems properly
-    // camera.JtJ has order: rotation, position
-    // cube pose has order: position, rotation, side rotations
-    const cv::Vec6d camera_information_vector = camera.JtJ * cv::Vec6d(
+    const PoseMatrix camera_information_matrix =
+        observed_space_from_state_space.t() * camera.JtJ * observed_space_from_state_space;
+    const PoseVector camera_information_vector =
+        observed_space_from_state_space.t() * camera.JtJ * cv::Vec6d(
         camera.rvec[0], camera.rvec[1], camera.rvec[2],
         camera.tvec[0], camera.tvec[1], camera.tvec[2]);
 
     // Add information from camera to cube pose.
-    PoseMatrix updated_cube_pose_information_matrix = cube_pose_information_matrix;
-    PoseVector updated_cube_pose_information_vector = cube_pose_information_vector;
-    for (int pose_i = 0; pose_i < 6; ++pose_i)
-    {
-        int cam_i = (pose_i + 3) % 6;
-        for (int pose_j = 0; pose_j < 6; ++pose_j)
-        {
-            int cam_j = (pose_j + 3) % 6;
-            updated_cube_pose_information_matrix(pose_i, pose_j) += camera.JtJ(cam_i, cam_j);
-        }
-        updated_cube_pose_information_vector(pose_i) += camera_information_vector(cam_i);
-    }
+    PoseMatrix updated_cube_pose_information_matrix =
+        cube_pose_information_matrix + camera_information_matrix;
+    PoseVector updated_cube_pose_information_vector =
+        cube_pose_information_vector + camera_information_vector;
 
     ProbabalisticCube updated_cube = cube;
     updated_cube.pose_covariance = updated_cube_pose_information_matrix.inv();

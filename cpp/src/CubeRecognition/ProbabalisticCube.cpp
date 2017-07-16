@@ -7,6 +7,22 @@
 
 #include <SolverLib/FaceCube.hpp>
 
+// camera.JtJ has order: rotation, position
+// cube pose has order: position, rotation, side rotations
+const cv::Matx<double, 6, 12> observed_space_from_state_space =
+    []()
+{
+    cv::Matx<double, 6, 12> m;
+    m <<
+        0, 0, 0,  1, 0, 0,  0, 0, 0, 0, 0, 0,
+        0, 0, 0,  0, 1, 0,  0, 0, 0, 0, 0, 0,
+        0, 0, 0,  0, 0, 1,  0, 0, 0, 0, 0, 0,
+        1, 0, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
+        0, 1, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
+        0, 0, 1,  0, 0, 0,  0, 0, 0, 0, 0, 0;
+    return m;
+}();
+
 double ProbabalisticCube::relativeLogLikelihoodOfRotations()
 {
     double score = 0;
