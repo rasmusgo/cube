@@ -13,7 +13,7 @@
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
 
-const size_t kMaxNumHypotheses = 1 + 6 * 3 ; // 216
+const size_t kMaxNumHypotheses = 216;
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
 void setupWindows(const cv::Size& img_size)
