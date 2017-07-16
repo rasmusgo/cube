@@ -15,8 +15,8 @@ struct ProbabalisticCube
     static const int D = 12;
     using PoseVector = cv::Vec<float, D>;
     using PoseMatrix = cv::Matx<float, D, D>;
-    PoseVector pose_estimate{0, 0, 0};
-    PoseMatrix pose_covariance{PoseMatrix::eye()};
+    PoseVector pose_estimate = {0, 0, 10};
+    PoseMatrix pose_covariance{PoseMatrix::eye() * 10};
 
     double relativeLogLikelihoodOfRotations();
 };
