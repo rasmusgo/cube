@@ -13,7 +13,6 @@ struct Camera
     cv::Vec<double, 5> dist_coeffs;
     cv::Vec3d rvec;
     cv::Vec3d tvec;
-    cv::Matx66d JtJ = 0.0; // rotation, translation
 };
 
 cv::Point3f idTo3d(int side, float id_x, float id_y);
