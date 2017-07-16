@@ -23,6 +23,9 @@ const cv::Matx<double, 6, 12> observed_space_from_state_space =
     return m;
 }();
 
+const ProbabalisticCube::PoseMatrix pose_prediction_uncertainty =
+    ProbabalisticCube::PoseMatrix::eye() * 1.0;
+
 double ProbabalisticCube::relativeLogLikelihoodOfRotations()
 {
     double score = 0;
@@ -74,7 +77,7 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
     // * Face moves (6 faces, +/- 90 degrees = 12 moves)
 
     ProbabalisticCube child_template = parent;
-    child_template.pose_covariance += ProbabalisticCube::PoseMatrix::eye() * 0.1;
+    child_template.pose_covariance += pose_prediction_uncertainty;
 
     std::vector<ProbabalisticCube> children;
     for (int i = 0; i < 3; ++i)
