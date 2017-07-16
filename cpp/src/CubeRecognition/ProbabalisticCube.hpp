@@ -21,6 +21,17 @@ struct ProbabalisticCube
     double relativeLogLikelihoodOfRotations();
 };
 
+inline bool compareCubeLikelihoods(const ProbabalisticCube& a, const ProbabalisticCube& b)
+
+{
+    return a.log_likelihood < b.log_likelihood;
+}
+
+inline bool compareCubeLikelihoodsReversed(const ProbabalisticCube& a, const ProbabalisticCube& b)
+{
+    return b.log_likelihood < a.log_likelihood;
+}
+
 void normalizeLikelihood(std::vector<ProbabalisticCube>& cubes);
 std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& parent);
 std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cubes);

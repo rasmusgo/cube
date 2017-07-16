@@ -22,15 +22,14 @@ double ProbabalisticCube::relativeLogLikelihoodOfRotations()
 /// Normalize likelihood of cubes so that the sum of likelihood is 1.0
 void normalizeLikelihood(std::vector<ProbabalisticCube>& cubes)
 {
+    if (cubes.empty())
+    {
+        return;
+    }
+
     { // Normalize using max log likelihood.
-        double max_log_likelihood = -std::numeric_limits<double>::infinity();
-        for (ProbabalisticCube& cube : cubes)
-        {
-            if (cube.log_likelihood > max_log_likelihood)
-            {
-                max_log_likelihood = cube.log_likelihood;
-            }
-        }
+        const double max_log_likelihood =
+            std::max_element(cubes.begin(), cubes.end(), compareCubeLikelihoods)->log_likelihood;
         for (ProbabalisticCube& cube : cubes)
         {
             cube.log_likelihood -= max_log_likelihood;
@@ -120,12 +119,8 @@ std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cub
 
 void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
 {
-    std::sort(cubes.begin(), cubes.end(),
-        [](const ProbabalisticCube& a, const ProbabalisticCube& b)
-    {
-        // Sort most likely first.
-        return b.log_likelihood < a.log_likelihood;
-    });
+    // Sort most likely first.
+    std::sort(cubes.begin(), cubes.end(), compareCubeLikelihoodsReversed);
     if (cubes.size() > max_num)
     {
         cubes.resize(max_num);
