@@ -1,3 +1,5 @@
+#include "SolveCamera.hpp"
+
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -8,7 +10,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "LabelContour.hpp"
-#include "SolveCamera.hpp"
 
 cv::Point3f idTo3d(int side, float id_x, float id_y)
 {
@@ -209,82 +210,4 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width
         }
     }
     return visible_points2d;
-}
-
-std::vector<Camera> predictCameraPosesForLabel(
-    const Camera& cam, const std::vector<cv::Point2f>& label_corners, float label_width)
-{
-    const float half_width = label_width * 0.5f;
-    const std::vector<std::vector<cv::Point3f>> candidate_points3d = [&half_width]()
-    {
-        std::vector<std::vector<cv::Point3f>> point_groups;
-        point_groups.reserve(9);
-        for (float y : {-1, 0, 1})
-        {
-            for (float x : {-1, 0, 1})
-            {
-                std::vector<cv::Point3f> label_points3d;
-                label_points3d.reserve(4);
-                label_points3d.emplace_back(x + half_width, y + half_width, 1.5f);
-                label_points3d.emplace_back(x - half_width, y + half_width, 1.5f);
-                label_points3d.emplace_back(x - half_width, y - half_width, 1.5f);
-                label_points3d.emplace_back(x + half_width, y - half_width, 1.5f);
-                point_groups.push_back(std::move(label_points3d));
-            }
-        }
-        return point_groups;
-    }();
-
-    std::vector<Camera> cam_candidates;
-    cam_candidates.reserve(candidate_points3d.size());
-    for (const auto& points3d : candidate_points3d)
-    {
-        Camera new_cam = cam;
-        cv::solvePnP(points3d, label_corners,
-            cam.camera_matrix, cam.dist_coeffs,
-            new_cam.rvec, new_cam.tvec);
-
-        // Compute certainty of rotation and translation
-        cv::Mat J;
-        std::vector<cv::Point2f> p; // dummy output vector
-        cv::projectPoints(points3d, new_cam.rvec, new_cam.tvec,
-            new_cam.camera_matrix, new_cam.dist_coeffs, p, J);
-        new_cam.JtJ = cv::Mat(J.t() * J, cv::Rect(0, 0, 6, 6));
-
-        cam_candidates.push_back(std::move(new_cam));
-    }
-    return cam_candidates;
-}
-
-double scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
-    const std::vector<std::vector<cv::Point2f>>& detected_corners)
-{
-    double score = 0;
-    double sigma = 5;
-    double inv_denom = 1.0 / (2 * sigma * sigma);
-    for (int i = 0; i < predicted_corners.size(); i += 4)
-    {
-        for (const auto& corners : detected_corners)
-        {
-            // We are now looking at one predicted and one detected label.
-            // Test different rotations (corner order) of the detected label since it
-            // may not always match the predicted rotation.
-            double label_score = 0;
-            for (int rotation_i = 0; rotation_i < 4; ++rotation_i)
-            {
-                double rotation_score = 0;
-                for (int corner_i = 0; corner_i < 4; ++corner_i)
-                {
-                    int j = (rotation_i + corner_i) % 4;
-                    int k = (rotation_i + corner_i + 1) % 4;
-                    double a_d2 = cv::norm(cv::Vec2f(predicted_corners[i + j] - corners[j]), cv::NORM_L2SQR);
-                    double b_d2 = cv::norm(cv::Vec2f(predicted_corners[i + k] - corners[k]), cv::NORM_L2SQR);
-                    rotation_score += exp(-a_d2 * inv_denom) * exp(-b_d2 * inv_denom);
-                }
-                label_score = std::max(label_score, rotation_score);
-            }
-            score += label_score;
-        }
-    }
-    return score;
 }
