@@ -136,6 +136,22 @@ std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cub
     return all_predictions;
 }
 
+template <class T, int R, int C>
+double closeToEqual(const cv::Matx<T, R, C>& a, const cv::Matx<T, R, C>& b, T max_difference)
+{
+    for (int i = 0; i < R; ++i)
+    {
+        for (int j = 0; j < C; ++j)
+        {
+            if (std::abs(a(i, j) - b(i, j)) > max_difference)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
 {
     // Merge similar probability distributions
@@ -149,12 +165,12 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
         {
             for (auto it = equal_range.first; it != equal_range.second; ++it)
             {
-                const double max_difference = 1.0e-6;
-                if (cv::norm(cube.pose_estimate, it->second.pose_estimate, cv::NORM_INF) > max_difference)
+                const float max_difference = 1.0e-6;
+                if (!closeToEqual(cube.pose_estimate, it->second.pose_estimate, max_difference))
                 {
                     continue;
                 }
-                if (cv::norm(cube.pose_covariance, it->second.pose_covariance, cv::NORM_INF) > max_difference)
+                if (!closeToEqual(cube.pose_covariance, it->second.pose_covariance, max_difference))
                 {
                     continue;
                 }
