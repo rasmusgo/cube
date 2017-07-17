@@ -350,15 +350,73 @@ std::vector<ProbabalisticCube> update(
         return cube_hypotheses;
     }
 
-    // TODO(Rasmus): Merge observations.
+    // Merge observations pairwise.
+    std::vector<LabelObservation> merged_observations;
+    for (size_t i = 0; i < observations.size(); ++i)
+    {
+        for (size_t j = i + 1; j < observations.size(); ++j)
+        {
+            const LabelObservation& a = observations[i];
+            const LabelObservation& b = observations[j];
+            if (a.label_index == b.label_index)
+            {
+                continue;
+            }
 
-    showObservationContributions(calibrated_camera, observations, label_width, img);
-    showBestLabelObservation(calibrated_camera, observations, detected_corners, label_width, img);
+            LabelObservation c;
+            // Encode multiple label indices based on:
+            // 1. A normal label_index is less than detected_corners.size()
+            // 2. b.label_index > 0 because b.label_index > a.label_index.
+            c.label_index = b.label_index * detected_corners.size() + a.label_index;
 
+            c.JtJ = a.JtJ + b.JtJ;
+            const cv::Vec6d a_vec(a.rvec[0], a.rvec[1], a.rvec[2], a.tvec[0], a.tvec[1], a.tvec[2]);
+            const cv::Vec6d b_vec(b.rvec[0], b.rvec[1], b.rvec[2], b.tvec[0], b.tvec[1], b.tvec[2]);
+            const cv::Vec6d c_vec = c.JtJ.inv() * (a.JtJ * a_vec + b.JtJ * b_vec);
+            c.rvec << c_vec[0], c_vec[1], c_vec[2];
+            c.tvec << c_vec[3], c_vec[4], c_vec[5];
+
+            // Compute mahalanobis distance of c_vec in distribution of a and b.
+            // Reject if c_vec is too unlikely.
+            // Mahalanobis distance is symmetric for c_vec in a and b
+            // because c_vec is the optimal combined estimate.
+            const double max_mahalanobis_distance = 5.35; // Chi-square k=6, p=0.5
+            //const double max_mahalanobis_distance = 12.59; // Chi-square k=6, p=0.05
+            const double a_mahalanobis = cv::Mahalanobis(c_vec, a_vec, a.JtJ);
+            if (a_mahalanobis > max_mahalanobis_distance)
+            {
+                continue;
+            }
+
+            const std::vector<cv::Point2f> predicted_corners =
+                projectCubeCorners(calibrated_camera, c, label_width);
+            c.score = scorePredictedCorners(predicted_corners, detected_corners);
+
+            if (c.score > a.score &&
+                c.score > b.score)
+            {
+                printf("Merging observations %lu and %lu (labels %lu and %lu): mahalanobis distance: %.2f scores: a: %.2f b: %.2f c: %.2f\n",
+                    i, j, a.label_index, b.label_index, a_mahalanobis, a.score, b.score, c.score);
+
+                merged_observations.push_back(c);
+            }
+        }
+    }
+
+    printf("Generated %lu observation pairs.\n", merged_observations.size());
+
+    std::vector<LabelObservation> combined_observations = observations;
+    combined_observations.insert(combined_observations.end(),
+        merged_observations.begin(), merged_observations.end());
+
+    showObservationContributions(calibrated_camera, combined_observations, label_width, img);
+    showBestLabelObservation(calibrated_camera, combined_observations, detected_corners, label_width, img);
+
+    // TODO(Rasmus): Add the hypotheses that all observation candidates are outliers.
     std::vector<ProbabalisticCube> updated_cube_hypotheses;
     for (const auto& cube : cube_hypotheses)
     {
-        for (const auto& observation : observations)
+        for (const auto& observation : combined_observations)
         {
             const ProbabalisticCube updated_cube = updateCube(cube, observation);
             updated_cube_hypotheses.push_back(updated_cube);
