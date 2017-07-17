@@ -7,6 +7,8 @@
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
 
+extern const cv::Matx<double, 6, 12> observed_space_from_state_space;
+
 struct LabelObservation
 {
     size_t label_index = 0;

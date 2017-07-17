@@ -4,8 +4,6 @@
 
 #include <SolverLib/FaceCube.hpp>
 
-extern const cv::Matx<double, 6, 12> observed_space_from_state_space;
-
 struct ProbabalisticCube
 {
     double log_likelihood = 0;
