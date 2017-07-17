@@ -15,18 +15,13 @@ const double inv_corner_sigma_squared = 1.0 / (corner_sigma * corner_sigma);
 // observation.JtJ has order: rotation, position
 // cube pose has order: position, rotation, side rotations
 const cv::Matx<double, 6, 12> observed_space_from_state_space =
-    []()
-{
-    cv::Matx<double, 6, 12> m;
-    m <<
-        0, 0, 0,  1, 0, 0,  0, 0, 0, 0, 0, 0,
-        0, 0, 0,  0, 1, 0,  0, 0, 0, 0, 0, 0,
-        0, 0, 0,  0, 0, 1,  0, 0, 0, 0, 0, 0,
-        1, 0, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
-        0, 1, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
-        0, 0, 1,  0, 0, 0,  0, 0, 0, 0, 0, 0;
-    return m;
-}();
+    *(cv::Matx<double, 6, 12>() <<
+    0, 0, 0,  1, 0, 0,  0, 0, 0, 0, 0, 0,
+    0, 0, 0,  0, 1, 0,  0, 0, 0, 0, 0, 0,
+    0, 0, 0,  0, 0, 1,  0, 0, 0, 0, 0, 0,
+    1, 0, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
+    0, 1, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
+    0, 0, 1,  0, 0, 0,  0, 0, 0, 0, 0, 0);
 
 std::vector<cv::Point2f> projectCubeCorners(
     const Camera& calibrated_camera,
