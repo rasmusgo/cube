@@ -18,6 +18,8 @@ add_executable(CubeRecognition
     Settings.hpp
     SolveCamera.cpp
     SolveCamera.hpp
+    Timer.cpp
+    Timer.hpp
     VectorMath.hpp
 )
 

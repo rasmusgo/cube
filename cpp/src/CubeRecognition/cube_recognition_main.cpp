@@ -13,6 +13,7 @@
 #include "ObserveLabels.hpp"
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
+#include "Timer.hpp"
 
 const size_t kMaxNumHypotheses = 216;
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
@@ -284,6 +285,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
     for (int frame_i = 0;;)
     {
         printf("Frame %i\n", frame_i);
+        startTimer();
 
         char buf[1024];
         sprintf(buf, "%s/frame%05d.png", folder.c_str(), frame_i);
@@ -338,6 +340,8 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         }
 
         showMostLikelyCube(cube_hypotheses, calibrated_camera, label_width, img);
+        stopTimer();
+        fflush(stdout);
 
         if (int key = cv::waitKey(0) & 255)
         {
