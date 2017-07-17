@@ -9,6 +9,9 @@
 #include "LabelContour.hpp"
 #include "SolveCamera.hpp"
 
+const double corner_sigma = 5;
+const double inv_corner_sigma_squared = 1.0 / (corner_sigma * corner_sigma);
+
 std::vector<cv::Point2f> projectCubeCorners(
     const Camera& calibrated_camera,
     const LabelObservation& observation,
@@ -24,8 +27,7 @@ float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
     const std::vector<std::vector<cv::Point2f>>& detected_corners)
 {
     double score = 0;
-    double sigma = 5;
-    double inv_denom = 1.0 / (2 * sigma * sigma);
+    const double inv_denom = 1.0 / (2 * corner_sigma * corner_sigma);
     for (int i = 0; i < predicted_corners.size(); i += 4)
     {
         for (const auto& corners : detected_corners)
@@ -33,7 +35,7 @@ float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
             // We are now looking at one predicted and one detected label.
             // Test different rotations (corner order) of the detected label since it
             // may not always match the predicted rotation.
-            double label_score = 0;
+            double label_score = -std::numeric_limits<double>::infinity();
             for (int rotation_i = 0; rotation_i < 4; ++rotation_i)
             {
                 double rotation_score = 0;
@@ -43,7 +45,7 @@ float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
                     int k = (rotation_i + corner_i + 1) % 4;
                     double a_d2 = cv::norm(cv::Vec2f(predicted_corners[i + j] - corners[j]), cv::NORM_L2SQR);
                     double b_d2 = cv::norm(cv::Vec2f(predicted_corners[i + k] - corners[k]), cv::NORM_L2SQR);
-                    rotation_score += exp(-a_d2 * inv_denom) * exp(-b_d2 * inv_denom);
+                    rotation_score += exp(-a_d2 * inv_denom + -b_d2 * inv_denom);
                 }
                 label_score = std::max(label_score, rotation_score);
             }
@@ -96,6 +98,9 @@ std::vector<LabelObservation> generateObservationsForLabel(
         cv::projectPoints(points3d, observation.rvec, observation.tvec,
             calibrated_camera.camera_matrix, calibrated_camera.dist_coeffs, p, J);
         observation.JtJ = cv::Mat(J.t() * J, cv::Rect(0, 0, 6, 6));
+        // covariance = JtJ.inv() * rmse^2
+        // covariance.inv() = (JtJ.inv() * rmse^2).inv() = JtJ * (rmse^2).inv()
+        observation.JtJ *= inv_corner_sigma_squared;
 
         const std::vector<cv::Point2f> predicted_corners =
             projectCubeCorners(calibrated_camera, observation, label_width);
