@@ -178,12 +178,13 @@ void showPredictedCorners(
         cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
     }
 
+    for (int i = 0; i < detected_corners.size(); i += 4)
     {
         std::vector<cv::Point> corners = {
-            detected_corners[0],
-            detected_corners[1],
-            detected_corners[2],
-            detected_corners[3],
+            detected_corners[i + 0],
+            detected_corners[i + 1],
+            detected_corners[i + 2],
+            detected_corners[i + 3],
         };
         cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
     }
@@ -218,7 +219,25 @@ void showBestLabelObservation(
         const std::vector<cv::Point2f> predicted_corners =
             projectCubeCorners(calibrated_camera, observation, label_width);
 
-        showPredictedCorners(img, predicted_corners, detected_corners[observation.label_index]);
+        if (observation.label_index < detected_corners.size())
+        {
+            // Single index
+            showPredictedCorners(img, predicted_corners, detected_corners[observation.label_index]);
+        }
+        else
+        {
+            // Multiple indices
+            std::vector<cv::Point2f> selected_corners;
+            for (size_t rest = observation.label_index; rest != 0; rest /= detected_corners.size())
+            {
+                const size_t index = rest % detected_corners.size();
+                for (const auto corner : detected_corners[index])
+                {
+                    selected_corners.push_back(corner);
+                }
+            }
+            showPredictedCorners(img, predicted_corners, selected_corners);
+        }
     }
 }
 
