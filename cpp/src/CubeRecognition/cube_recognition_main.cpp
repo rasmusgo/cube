@@ -318,6 +318,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         const std::vector<LabelContour> labels = findLabelContours(img, 12, true);
         const std::vector<std::vector<cv::Point2f>> detected_corners = findLabelCorners(labels);
         showDetectedLabels(img, labels, detected_corners);
+        printf("Found %lu label candidates.\n", labels.size());
 
         {
             const size_t num_hypotheses_before = cube_hypotheses.size();
