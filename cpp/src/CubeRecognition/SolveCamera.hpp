@@ -29,3 +29,5 @@ Camera solveCamera(
 
 std::vector<cv::Point2f> projectCube(const Camera& cam);
 std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width);
+
+void renderCoordinateSystem(cv::Mat3b& io_canvas, const Camera& cam);

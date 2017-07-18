@@ -211,3 +211,17 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width
     }
     return visible_points2d;
 }
+
+void renderCoordinateSystem(cv::Mat3b& io_canvas, const Camera& cam)
+{
+    std::vector<cv::Point3f> points3d = {
+        cv::Point3f(0, 0, 0),
+        cv::Point3f(1, 0, 0),
+        cv::Point3f(0, 1, 0),
+        cv::Point3f(0, 0, 1)};
+    std::vector<cv::Point2f> points2d;
+    cv::projectPoints(points3d, cam.rvec, cam.tvec, cam.camera_matrix, cam.dist_coeffs, points2d);
+    cv::arrowedLine(io_canvas, points2d[0], points2d[1], cv::Scalar(0, 0, 255));
+    cv::arrowedLine(io_canvas, points2d[0], points2d[2], cv::Scalar(0, 255, 0));
+    cv::arrowedLine(io_canvas, points2d[0], points2d[3], cv::Scalar(255, 0, 0));
+}
