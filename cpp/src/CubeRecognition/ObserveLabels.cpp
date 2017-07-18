@@ -545,21 +545,12 @@ std::vector<LabelObservation> generateObservations(
     return good_observations;
 }
 
-std::vector<ProbabalisticCube> update(
-    const std::vector<ProbabalisticCube>& cube_hypotheses,
+std::vector<LabelObservation> mergeObservationsPairwise(
+    const Camera& calibrated_camera,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+    const std::vector<LabelObservation>& observations,
+    float label_width)
 {
-    const std::vector<LabelObservation> observations =
-        generateObservations(calibrated_camera, detected_corners, label_width);
-
-    if (observations.empty())
-    {
-        printf("No observations!\n");
-        return cube_hypotheses;
-    }
-
-    // Merge observations pairwise.
     std::vector<LabelObservation> merged_observations;
     for (size_t i = 0; i < observations.size(); ++i)
     {
@@ -611,6 +602,26 @@ std::vector<ProbabalisticCube> update(
             }
         }
     }
+
+    return merged_observations;
+}
+
+std::vector<ProbabalisticCube> update(
+    const std::vector<ProbabalisticCube>& cube_hypotheses,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
+{
+    const std::vector<LabelObservation> observations =
+        generateObservations(calibrated_camera, detected_corners, label_width);
+
+    if (observations.empty())
+    {
+        printf("No observations!\n");
+        return cube_hypotheses;
+    }
+
+    const std::vector<LabelObservation> merged_observations =
+        mergeObservationsPairwise(calibrated_camera, detected_corners, observations, label_width);
 
     printf("Generated %lu observation pairs.\n", merged_observations.size());
 
