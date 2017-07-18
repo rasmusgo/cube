@@ -1,9 +1,8 @@
-add_executable(CubeRecognition
+add_library(CubeRecognitionLib
     AssignColors.cpp
     AssignColors.hpp
     ConnectLabelContours.cpp
     ConnectLabelContours.hpp
-    cube_recognition_main.cpp
     FindLabelContours.cpp
     FindLabelContours.hpp
     FindLabels.cpp
@@ -25,7 +24,23 @@ add_executable(CubeRecognition
     VectorMath.hpp
 )
 
-target_link_libraries(CubeRecognition
+target_link_libraries(CubeRecognitionLib
     SolverLib
     ${OpenCV_LIBS}
+)
+
+add_executable(CubeRecognition
+    cube_recognition_main.cpp
+)
+
+target_link_libraries(CubeRecognition
+    CubeRecognitionLib
+)
+
+add_executable(CubeRecognitionTest
+    cube_recognition_test.cpp
+)
+
+target_link_libraries(CubeRecognitionTest
+    CubeRecognitionLib
 )
