@@ -627,7 +627,12 @@ std::vector<ProbabalisticCube> update(
     {
         for (const auto& observation : combined_observations)
         {
-            const ProbabalisticCube updated_cube = updateCube(cube, observation);
+            const cv::Vec3d target_rvec(
+                cube.pose_estimate[3],
+                cube.pose_estimate[4],
+                cube.pose_estimate[5]);
+            const ProbabalisticCube updated_cube =
+                updateCube(cube, adjustedObservation(observation, target_rvec));
             updated_cube_hypotheses.push_back(updated_cube);
         }
     }
