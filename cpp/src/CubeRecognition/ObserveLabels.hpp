@@ -18,6 +18,25 @@ struct LabelObservation
     float score = 0;
 };
 
+LabelObservation adjustedObservation(
+    const LabelObservation& observation,
+    const cv::Vec3d& target_rvec);
+
+const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations);
+
+void renderLabelObservation(
+    cv::Mat3b& io_canvas,
+    const Camera& calibrated_camera,
+    const LabelObservation& observation,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    float label_width);
+
+void showBestLabelObservation(
+    const Camera& calibrated_camera,
+    const std::vector<LabelObservation>& observations,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    float label_width, const cv::Mat3b& img);
+
 std::vector<LabelObservation> generateObservations(
     const Camera& calibrated_camera,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
