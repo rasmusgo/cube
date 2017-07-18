@@ -222,6 +222,61 @@ void renderPredictedCorners(
     }
 }
 
+void renderObservationUncertainty(
+    cv::Mat3b& io_canvas,
+    const Camera& calibrated_camera,
+    const LabelObservation& observation)
+{
+    const std::vector<cv::Point3f> points3d = {
+        cv::Point3f(-1.5, -1.5, -1.5),
+        cv::Point3f(-1.5, -1.5, 1.5),
+        cv::Point3f(-1.5, 1.5, -1.5),
+        cv::Point3f(-1.5, 1.5, 1.5),
+        cv::Point3f(1.5, -1.5, -1.5),
+        cv::Point3f(1.5, -1.5, 1.5),
+        cv::Point3f(1.5, 1.5, -1.5),
+        cv::Point3f(1.5, 1.5, 1.5)};
+    std::vector<cv::Point2f> points2d;
+    cv::Mat1d jacobian; // 2Nx(10+numDistCoeffs)
+    cv::projectPoints(
+        points3d,
+        observation.rvec,
+        observation.tvec,
+        calibrated_camera.camera_matrix,
+        calibrated_camera.dist_coeffs,
+        points2d,
+        jacobian);
+    // delta2d ~= jacobian * delta_cam_and_points3d
+    cv::Mat1d jacobian_extrinsics(jacobian, cv::Rect(0,0, 6, jacobian.rows)); // 2Nx6
+    cv::Mat1d covar_points2d =
+        jacobian_extrinsics * cv::Mat1d(observation.JtJ).inv() * jacobian_extrinsics.t(); // 2Nx2N
+
+    const cv::Scalar orange(0, 127, 255);
+    for (auto p : points2d)
+    {
+        cv::circle(io_canvas, p, 1, orange);
+    }
+    std::vector<cv::Point2d> raw_ellipse_points2d;
+    cv::ellipse2Poly(cv::Point2d(0,0), cv::Size2d(2,2), 0, 0, 360, 10, raw_ellipse_points2d);
+    for (size_t i = 0; i < points2d.size(); ++i)
+    {
+        const cv::Matx22d covar_point2d = cv::Mat1f(covar_points2d, cv::Rect(2*i, 2*i, 2, 2));
+        const cv::Point2d point2d = points2d[i];
+
+        cv::Vec2d eigenvalues;
+        cv::Matx22d eigenvectors;
+        cv::eigen(covar_point2d, eigenvalues, eigenvectors);
+        cv::sqrt(eigenvalues, eigenvalues);
+        cv::Matx22d transform = eigenvectors * cv::Matx22d::diag(eigenvalues);
+        std::vector<cv::Point> final_ellipse_points;
+        for (const cv::Point2d p : raw_ellipse_points2d)
+        {
+            final_ellipse_points.push_back(point2d + transform * p);
+        }
+        cv::polylines(io_canvas, final_ellipse_points, true, orange);
+    }
+}
+
 const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations)
 {
     const LabelObservation& observation =
@@ -274,8 +329,9 @@ void renderLabelObservation(
             selected_corners.push_back(corner);
         }
     }
-    renderPredictedCorners(io_canvas, predicted_corners, selected_corners);
     renderCoordinateSystem(io_canvas, calibrated_camera, observation);
+    renderPredictedCorners(io_canvas, predicted_corners, selected_corners);
+    renderObservationUncertainty(io_canvas, calibrated_camera, observation);
 }
 
 void showBestLabelObservation(
