@@ -220,6 +220,48 @@ const LabelObservation& findBestObservation(const std::vector<LabelObservation>&
     return observation;
 }
 
+std::vector<size_t> unpackLabelIndices(size_t label_index, size_t num_labels)
+{
+    if (label_index < num_labels)
+    {
+        // Single index
+        return {label_index};
+    }
+    else
+    {
+        // Multiple indices
+        std::vector<size_t> label_indices;
+        for (size_t rest = label_index; rest != 0; rest /= num_labels)
+        {
+            label_indices.push_back(rest % num_labels);
+        }
+        return label_indices;
+    }
+}
+
+void showLabelObservation(
+    const Camera& calibrated_camera,
+    const LabelObservation& observation,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    float label_width, const cv::Mat3b& img)
+{
+    const std::vector<cv::Point2f> predicted_corners =
+        projectCubeCorners(calibrated_camera, observation, label_width);
+
+    const std::vector<size_t> label_indices =
+        unpackLabelIndices(observation.label_index, detected_corners.size());
+
+    std::vector<cv::Point2f> selected_corners;
+    for (const size_t index : label_indices)
+    {
+        for (const auto corner : detected_corners[index])
+        {
+            selected_corners.push_back(corner);
+        }
+    }
+    showPredictedCorners(img, predicted_corners, selected_corners);
+}
+
 void showBestLabelObservation(
     const Camera& calibrated_camera,
     const std::vector<LabelObservation>& observations,
@@ -231,29 +273,7 @@ void showBestLabelObservation(
         const LabelObservation& observation = findBestObservation(observations);
         printf("detected_corners size: %lu label_index: %lu\n",
             detected_corners.size(), observation.label_index);
-
-        const std::vector<cv::Point2f> predicted_corners =
-            projectCubeCorners(calibrated_camera, observation, label_width);
-
-        if (observation.label_index < detected_corners.size())
-        {
-            // Single index
-            showPredictedCorners(img, predicted_corners, detected_corners[observation.label_index]);
-        }
-        else
-        {
-            // Multiple indices
-            std::vector<cv::Point2f> selected_corners;
-            for (size_t rest = observation.label_index; rest != 0; rest /= detected_corners.size())
-            {
-                const size_t index = rest % detected_corners.size();
-                for (const auto corner : detected_corners[index])
-                {
-                    selected_corners.push_back(corner);
-                }
-            }
-            showPredictedCorners(img, predicted_corners, selected_corners);
-        }
+        showLabelObservation(calibrated_camera, observation, detected_corners, label_width, img);
     }
 }
 
