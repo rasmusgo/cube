@@ -163,29 +163,6 @@ void recordVideoFrames()
     }
 }
 
-void showDetectedLabels(
-    const cv::Mat3b& img,
-    const std::vector<LabelContour>& labels,
-    const std::vector<std::vector<cv::Point2f>>& detected_corners)
-{
-    cv::Mat3b canvas = img * 0.25f;
-    drawLabels(canvas, labels, cv::Scalar(255, 255, 255));
-
-    for (const auto& corners : detected_corners)
-    {
-        cv::polylines(canvas, cast<cv::Point>(corners), true, cv::Scalar(0, 0, 255));
-        for (size_t i = 0; i < corners.size(); ++i)
-        {
-            char text[12];
-            sprintf(text, "%lu", i);
-            cv::putText(canvas, text, corners[i],
-                cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
-        }
-    }
-
-    cv::imshow("detected labels", canvas);
-}
-
 void handleKeys(int& io_frame_i, int key)
 {
     if (key == 32) // space

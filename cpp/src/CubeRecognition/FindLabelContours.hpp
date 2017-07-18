@@ -13,3 +13,8 @@ std::vector<std::vector<cv::Point2f>> findLabelCorners(const std::vector<LabelCo
 
 void drawLabel(cv::Mat& canvas, const LabelContour& label, const cv::Scalar& color);
 void drawLabels(cv::Mat& canvas, const std::vector<LabelContour>& labels, const cv::Scalar& color);
+
+void showDetectedLabels(
+    const cv::Mat3b& img,
+    const std::vector<LabelContour>& labels,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners);
