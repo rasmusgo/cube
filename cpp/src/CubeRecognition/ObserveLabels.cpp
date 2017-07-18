@@ -177,12 +177,11 @@ void showObservationContributions(
     cv::imshow("accumulation", accumulation / maxval);
 }
 
-void showPredictedCorners(
-    const cv::Mat3b& img,
+void renderPredictedCorners(
+    cv::Mat3b& io_canvas,
     const std::vector<cv::Point2f>& predicted_corners,
     const std::vector<cv::Point2f>& detected_corners)
 {
-    cv::Mat3b canvas = img * 0.25f;
     for (int i = 0; i < predicted_corners.size(); i += 4)
     {
         std::vector<cv::Point> corners = {
@@ -191,7 +190,7 @@ void showPredictedCorners(
             predicted_corners[i + 2],
             predicted_corners[i + 3],
         };
-        cv::polylines(canvas, corners, true, cv::Scalar(0, 0, 255));
+        cv::polylines(io_canvas, corners, true, cv::Scalar(0, 0, 255));
     }
 
     for (int i = 0; i < detected_corners.size(); i += 4)
@@ -202,10 +201,8 @@ void showPredictedCorners(
             detected_corners[i + 2],
             detected_corners[i + 3],
         };
-        cv::polylines(canvas, corners, true, cv::Scalar(255, 0, 255));
+        cv::polylines(io_canvas, corners, true, cv::Scalar(255, 0, 255));
     }
-
-    cv::imshow("predicted labels", canvas);
 }
 
 const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations)
@@ -239,11 +236,12 @@ std::vector<size_t> unpackLabelIndices(size_t label_index, size_t num_labels)
     }
 }
 
-void showLabelObservation(
+void renderLabelObservation(
+    cv::Mat3b& io_canvas,
     const Camera& calibrated_camera,
     const LabelObservation& observation,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
-    float label_width, const cv::Mat3b& img)
+    float label_width)
 {
     const std::vector<cv::Point2f> predicted_corners =
         projectCubeCorners(calibrated_camera, observation, label_width);
@@ -259,7 +257,7 @@ void showLabelObservation(
             selected_corners.push_back(corner);
         }
     }
-    showPredictedCorners(img, predicted_corners, selected_corners);
+    renderPredictedCorners(io_canvas, predicted_corners, selected_corners);
 }
 
 void showBestLabelObservation(
@@ -268,13 +266,15 @@ void showBestLabelObservation(
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
     float label_width, const cv::Mat3b& img)
 {
+    cv::Mat3b canvas = img * 0.25f;
     if (!observations.empty())
     {
         const LabelObservation& observation = findBestObservation(observations);
         printf("detected_corners size: %lu label_index: %lu\n",
             detected_corners.size(), observation.label_index);
-        showLabelObservation(calibrated_camera, observation, detected_corners, label_width, img);
+        renderLabelObservation(canvas, calibrated_camera, observation, detected_corners, label_width);
     }
+    cv::imshow("Best label observation", canvas);
 }
 
 double logNormPdf(const cv::Vec6d delta, const cv::Matx66d& JtJ)
