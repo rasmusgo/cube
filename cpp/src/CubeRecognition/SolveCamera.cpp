@@ -214,7 +214,7 @@ std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width
 
 void renderCoordinateSystem(cv::Mat3b& io_canvas, const Camera& cam)
 {
-    std::vector<cv::Point3f> points3d = {
+    const std::vector<cv::Point3f> points3d = {
         cv::Point3f(0, 0, 0),
         cv::Point3f(1, 0, 0),
         cv::Point3f(0, 1, 0),
