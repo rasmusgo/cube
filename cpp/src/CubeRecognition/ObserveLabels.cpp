@@ -566,7 +566,7 @@ std::vector<ProbabalisticCube> update(
         for (size_t j = i + 1; j < observations.size(); ++j)
         {
             const LabelObservation& a = observations[i];
-            const LabelObservation& b = observations[j];
+            const LabelObservation b = adjustedObservation(observations[j], a.rvec);
             if (a.label_index == b.label_index)
             {
                 continue;
