@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "LabelContour.hpp"
+#include "MatrixTools.hpp"
 #include "SolveCamera.hpp"
 
 const double corner_sigma = 5;
@@ -49,6 +50,101 @@ void renderCoordinateSystem(
 {
     const Camera cam = cameraFromObservation(calibrated_camera, observation);
     renderCoordinateSystem(io_canvas, cam);
+}
+
+LabelObservation adjustedObservation(
+    const LabelObservation& observation,
+    const cv::Matx33d& adjustment)
+{
+    cv::Matx33d obs_space_from_world;
+    cv::Rodrigues(observation.rvec, obs_space_from_world);
+    const cv::Matx33d adjusted_obs_space_from_world = obs_space_from_world * adjustment;
+
+    LabelObservation adjusted_observation = observation;
+    cv::Rodrigues(adjusted_obs_space_from_world, adjusted_observation.rvec);
+
+    // J is [2N x 10+numDist+3N] and describes how the 2D points are affected
+    // by changes in rvec, tvec, and 3D points.
+    // JtJ is [10+numDist+3N x 10+numDist+3N] and describes how sensitive the
+    // sum of squared differences of 2D points is to changes in rvec, tvec,
+    // intrinsics, and 3D points.
+
+    // We want to know how sensitive the sum of squared differences of 2D points
+    // is with respect to changes in adjusted rvec and adjusted tvec.
+    // To find that out we need to know how sensitive rvec and tvec are with
+    // respect to changes in adjusted rvec and adjusted tvec.
+    // tvec is not transformed, only rvec:
+    //             adjusted rvec                      = toVec(toMat(rvec) * adjustment)
+    //       toMat(adjusted rvec)                     =       toMat(rvec) * adjustment
+    //       toMat(adjusted rvec) * adjustment.inv()  =       toMat(rvec)
+    // toVec(toMat(adjusted rvec) * adjustment.inv()) =             rvec
+    //
+    // D rvec wrt adjusted rvec = D toVec(toMat(adjusted rvec) * adjustment.inv()) wrt adjusted rvec
+    // D rvec wrt adjusted rvec = (D toVec wrt rmat)(rmat) * (D toMat(adjusted rvec) * adjustment.inv() wrt adjusted rvec)
+    // D rvec wrt adjusted rvec = (D toVec wrt rmat)(rmat) * (D toMat wrt adjusted rvec)(adjusted rvec) * adjustment.inv()
+
+    // (D toVec wrt rmat)(rmat)
+    const cv::Matx<double, 3, 9> J39_rvec_wrt_rmat =
+        rodriguesJacobian(obs_space_from_world);
+
+    // (D toMat wrt adjusted rvec)(adjusted rvec)
+    const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec =
+        rodriguesJacobian(adjusted_observation.rvec);
+
+    // (D rvec wrt adjusted rvec)(adjusted rvec)
+    const cv::Matx<double, 3, 3> J33_rvec_wrt_adj_rvec =
+        J39_rvec_wrt_rmat * J93_adj_rmat_wrt_adj_rvec * adjustment.t();
+
+    const cv::Matx66d J66_obs_wrt_adj_obs = *(cv::Matx66d() <<
+        J33_rvec_wrt_adj_rvec(0,0), J33_rvec_wrt_adj_rvec(0,1), J33_rvec_wrt_adj_rvec(0,2), 0, 0, 0,
+        J33_rvec_wrt_adj_rvec(1,0), J33_rvec_wrt_adj_rvec(1,1), J33_rvec_wrt_adj_rvec(1,2), 0, 0, 0,
+        J33_rvec_wrt_adj_rvec(2,0), J33_rvec_wrt_adj_rvec(2,1), J33_rvec_wrt_adj_rvec(2,2), 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1);
+    adjusted_observation.JtJ = J66_obs_wrt_adj_obs * observation.JtJ * J66_obs_wrt_adj_obs.t();
+
+    return adjusted_observation;
+}
+
+LabelObservation adjustedObservation(
+    const LabelObservation& observation,
+    const cv::Vec3d& target_rvec)
+{
+    // Adjust rotation of observation to match target using 90 degree increments.
+    cv::Matx33d target_from_world;
+    cv::Rodrigues(target_rvec, target_from_world);
+
+    cv::Matx33d obs_space_from_world;
+    cv::Rodrigues(observation.rvec, obs_space_from_world);
+
+    //                            target_from_world ~= obs_space_from_world * adjustment
+    // obs_space_from_world.t() * target_from_world ~=                        adjustment
+    const cv::Matx33d raw_adjustment = obs_space_from_world.t() * target_from_world;
+    //const cv::Matx33d raw_adjustment = (target_from_world * obs_space_from_world.t()).t();
+
+    cv::Matx33d adjustment = closest90DegreeRotation(raw_adjustment);
+    if (cv::determinant(adjustment) != 1.0)
+    {
+        const double raw_determinant = cv::determinant(raw_adjustment);
+        const double determinant = cv::determinant(adjustment);
+        printf("WARNING: adjustment has a bad determinant of %f, skipping adjustment.\n",
+            determinant);
+        printf("raw_adjustment: (determinant: %f)\n", raw_determinant);
+        printMatx33d(raw_adjustment);
+        printf("adjustment: (determinant: %f)\n", determinant);
+        printMatx33d(adjustment);
+
+        return observation;
+    }
+    if (adjustment == cv::Matx33d::eye())
+    {
+        return observation;
+    }
+
+    LabelObservation adjusted_observation = adjustedObservation(observation, adjustment);
+
+    return adjusted_observation;
 }
 
 float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
@@ -340,15 +436,20 @@ void showBestLabelObservation(
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
     float label_width, const cv::Mat3b& img)
 {
-    cv::Mat3b canvas = img * 0.25f;
+    cv::Mat3b canvas1 = img * 0.25f;
+    cv::Mat3b canvas2 = img * 0.25f;
     if (!observations.empty())
     {
         const LabelObservation& observation = findBestObservation(observations);
         printf("detected_corners size: %lu label_index: %lu\n",
             detected_corners.size(), observation.label_index);
-        renderLabelObservation(canvas, calibrated_camera, observation, detected_corners, label_width);
+        renderLabelObservation(canvas1, calibrated_camera, observation, detected_corners, label_width);
+
+        renderLabelObservation(canvas2, calibrated_camera,
+            adjustedObservation(observation, cv::Vec3d(0, 0, 0)), detected_corners, label_width);
     }
-    cv::imshow("Best label observation", canvas);
+    cv::imshow("Best label observation", canvas1);
+    cv::imshow("Adjusted label observation", canvas2);
 }
 
 double logNormPdf(const cv::Vec6d delta, const cv::Matx66d& JtJ)
