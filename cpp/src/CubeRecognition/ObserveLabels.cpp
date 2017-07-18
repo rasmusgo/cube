@@ -93,7 +93,10 @@ LabelObservation adjustedObservation(
 
     // (D rvec wrt adjusted rvec)(adjusted rvec)
     const cv::Matx<double, 3, 3> J33_rvec_wrt_adj_rvec =
-        J39_rvec_wrt_rmat * J93_adj_rmat_wrt_adj_rvec * adjustment.t();
+//        J39_rvec_wrt_rmat * J93_adj_rmat_wrt_adj_rvec * adjustment.t();
+        (adjustment.t() == adjustment) ? // FIXME(Rasmus): Remove this dirty hack!
+        adjustment.t() * (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec : // perfect on most 180 degree rotations
+        (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec * adjustment.t(); // best so far (close to perfect on 90 degree rotations)
 
     const cv::Matx66d J66_obs_wrt_adj_obs = *(cv::Matx66d() <<
         J33_rvec_wrt_adj_rvec(0,0), J33_rvec_wrt_adj_rvec(0,1), J33_rvec_wrt_adj_rvec(0,2), 0, 0, 0,
