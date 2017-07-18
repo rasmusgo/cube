@@ -18,6 +18,17 @@ struct LabelObservation
     float score = 0;
 };
 
+std::vector<LabelObservation> generateObservations(
+    const Camera& calibrated_camera,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const float label_width);
+
+std::vector<LabelObservation> mergeObservationsPairwise(
+    const Camera& calibrated_camera,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const std::vector<LabelObservation>& observations,
+    float label_width);
+
 std::vector<ProbabalisticCube> update(
     const std::vector<ProbabalisticCube>& cube_hypotheses,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
