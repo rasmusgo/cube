@@ -23,15 +23,32 @@ const cv::Matx<double, 6, 12> observed_space_from_state_space =
     0, 1, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
     0, 0, 1,  0, 0, 0,  0, 0, 0, 0, 0, 0);
 
+Camera cameraFromObservation(
+    const Camera& calibrated_camera,
+    const LabelObservation& observation)
+{
+    Camera cam = calibrated_camera;
+    cam.rvec = observation.rvec;
+    cam.tvec = observation.tvec;
+    return cam;
+}
+
 std::vector<cv::Point2f> projectCubeCorners(
     const Camera& calibrated_camera,
     const LabelObservation& observation,
     float label_width)
 {
-    Camera cam = calibrated_camera;
-    cam.rvec = observation.rvec;
-    cam.tvec = observation.tvec;
+    const Camera cam = cameraFromObservation(calibrated_camera, observation);
     return projectCubeCorners(cam, label_width);
+}
+
+void renderCoordinateSystem(
+    cv::Mat3b& io_canvas,
+    const Camera& calibrated_camera,
+    const LabelObservation& observation)
+{
+    const Camera cam = cameraFromObservation(calibrated_camera, observation);
+    renderCoordinateSystem(io_canvas, cam);
 }
 
 float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
@@ -258,11 +275,7 @@ void renderLabelObservation(
         }
     }
     renderPredictedCorners(io_canvas, predicted_corners, selected_corners);
-
-    Camera cam = calibrated_camera;
-    cam.rvec = observation.rvec;
-    cam.tvec = observation.tvec;
-    renderCoordinateSystem(io_canvas, cam);
+    renderCoordinateSystem(io_canvas, calibrated_camera, observation);
 }
 
 void showBestLabelObservation(
