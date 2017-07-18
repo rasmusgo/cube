@@ -11,6 +11,8 @@ add_executable(CubeRecognition
     Image.hpp
     LabelContour.cpp
     LabelContour.hpp
+    MatrixTools.cpp
+    MatrixTools.hpp
     ObserveLabels.cpp
     ObserveLabels.hpp
     ProbabalisticCube.cpp
