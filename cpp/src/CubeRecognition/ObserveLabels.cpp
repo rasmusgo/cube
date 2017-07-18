@@ -258,6 +258,11 @@ void renderLabelObservation(
         }
     }
     renderPredictedCorners(io_canvas, predicted_corners, selected_corners);
+
+    Camera cam = calibrated_camera;
+    cam.rvec = observation.rvec;
+    cam.tvec = observation.tvec;
+    renderCoordinateSystem(io_canvas, cam);
 }
 
 void showBestLabelObservation(
