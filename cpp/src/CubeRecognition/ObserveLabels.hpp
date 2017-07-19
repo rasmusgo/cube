@@ -24,6 +24,12 @@ LabelObservation adjustedObservation(
 
 const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations);
 
+void projectOuterCubeCornersWithUncertainties(
+    const Camera& calibrated_camera,
+    const LabelObservation& observation,
+    std::vector<cv::Point2f>& out_points,
+    std::vector<cv::Matx22f>& out_points_covariances);
+
 void renderLabelObservation(
     cv::Mat3b& io_canvas,
     const Camera& calibrated_camera,
