@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <numeric>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
@@ -41,6 +42,28 @@ void handleKeys(int& io_frame_i, int key)
     }
 }
 
+void sortPointsWithCovariances(
+    std::vector<cv::Point2f>& io_points,
+    std::vector<cv::Matx22f>& io_points_covariances)
+{
+    std::vector<size_t> ordering(io_points.size());
+    std::iota(ordering.begin(), ordering.end(), 0); // Fill with identity permutation
+    std::sort(ordering.begin(), ordering.end(),
+        [&io_points](size_t a, size_t b)
+    {
+        return io_points[a].y < io_points[b].y; // Sort by y-coordinate
+    });
+    std::vector<cv::Point2f> ordered_points;
+    std::vector<cv::Matx22f> ordered_points_covariances;
+    for (size_t index : ordering)
+    {
+        ordered_points.push_back(io_points[index]);
+        ordered_points_covariances.push_back(io_points_covariances[index]);
+    }
+    io_points = std::move(ordered_points);
+    io_points_covariances = std::move(ordered_points_covariances);
+}
+
 void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, float label_width)
 {
     for (int frame_i = 0;;)
@@ -70,6 +93,12 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
             const LabelObservation observation = findBestObservation(observations);
             renderLabelObservation(canvas, calibrated_camera, observation, detected_corners, label_width);
 
+            std::vector<cv::Point2f> original_points;
+            std::vector<cv::Matx22f> original_points_covariances;
+            projectOuterCubeCornersWithUncertainties(calibrated_camera, observation,
+                original_points, original_points_covariances);
+            sortPointsWithCovariances(original_points, original_points_covariances);
+
             const std::vector<cv::Vec3d> target_vectors = {
                 cv::Vec3d(0, 0, 0),
                 cv::Vec3d(M_PI_2, 0, 0),
@@ -82,11 +111,31 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
                 cv::Vec3d(0, M_PI, 0),
                 cv::Vec3d(0, 0, M_PI),
             };
+            double sum_squared_errors = 0;
             for (const cv::Vec3d target_vec : target_vectors)
             {
+                const LabelObservation adjusted_observation =
+                    adjustedObservation(observation, target_vec);
                 renderLabelObservation(canvas, calibrated_camera,
-                    adjustedObservation(observation, target_vec), detected_corners, label_width);
+                    adjusted_observation, detected_corners, label_width);
+
+                std::vector<cv::Point2f> adjusted_points;
+                std::vector<cv::Matx22f> adjusted_points_covariances;
+                projectOuterCubeCornersWithUncertainties(calibrated_camera, adjusted_observation,
+                    adjusted_points, adjusted_points_covariances);
+                sortPointsWithCovariances(adjusted_points, adjusted_points_covariances);
+
+                // Compare points!
+                assert(adjusted_points.size() == original_points.size());
+                for (size_t i = 0; i < adjusted_points.size(); ++i)
+                {
+                    sum_squared_errors += cv::norm(cv::Mat(adjusted_points_covariances[i]),
+                        cv::Mat(original_points_covariances[i]), cv::NORM_L2SQR);
+                }
             }
+            const double rmse = std::sqrt(sum_squared_errors /
+                double(original_points.size() * target_vectors.size()));
+            printf("Adjusted points covariances root of mean squared error: %f\n", rmse);
         }
         cv::imshow("Superimposed adjustments", canvas);
 
