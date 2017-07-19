@@ -15,7 +15,7 @@ std::vector<cv::Point2f> findLabelPositions(const cv::Mat3b& img)
 {
     std::vector<std::vector<cv::Point2f>> candidate_points(3*9);
 
-    for (auto threshold : {4, 6, 8, 10, 12, 14, 16})
+    for (auto threshold : {4, 6, 8, 10, 12, 14})
     {
         std::vector<cv::Point2f> points_top = findLabelPositions(img, threshold, false);
 
