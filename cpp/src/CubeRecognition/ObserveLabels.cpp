@@ -324,10 +324,10 @@ void renderPredictedCorners(
 void projectOuterCubeCornersWithUncertainties(
     const Camera& calibrated_camera,
     const LabelObservation& observation,
-    std::vector<cv::Point2f>& out_points2d,
-    std::vector<cv::Matx22f>& out_points2d_covariances)
+    std::vector<cv::Point2f>& out_points,
+    std::vector<cv::Matx22f>& out_points_covariances)
 {
-    const std::vector<cv::Point3f> points3d = {
+    const std::vector<cv::Point3f> points_in_3D = {
         cv::Point3f(-1.5, -1.5, -1.5),
         cv::Point3f(-1.5, -1.5, 1.5),
         cv::Point3f(-1.5, 1.5, -1.5),
@@ -338,22 +338,22 @@ void projectOuterCubeCornersWithUncertainties(
         cv::Point3f(1.5, 1.5, 1.5)};
     cv::Mat1d jacobian; // 2Nx(10+numDistCoeffs)
     cv::projectPoints(
-        points3d,
+        points_in_3D,
         observation.rvec,
         observation.tvec,
         calibrated_camera.camera_matrix,
         calibrated_camera.dist_coeffs,
-        out_points2d,
+        out_points,
         jacobian);
-    // delta2d ~= jacobian * delta_cam_and_points3d
+    // delta_in_2D ~= jacobian * delta_cam_and_points_in_3D
     const cv::Mat1d jacobian_extrinsics(jacobian, cv::Rect(0, 0, 6, jacobian.rows)); // 2Nx6
     const cv::Mat1d covar_points2d =
         jacobian_extrinsics * cv::Mat1d(observation.JtJ).inv() * jacobian_extrinsics.t(); // 2Nx2N
 
-    out_points2d_covariances.resize(out_points2d.size());
-    for (size_t i = 0; i < out_points2d.size(); ++i)
+    out_points_covariances.resize(out_points.size());
+    for (size_t i = 0; i < out_points.size(); ++i)
     {
-        out_points2d_covariances[i] = cv::Mat1f(covar_points2d, cv::Rect(2*i, 2*i, 2, 2));
+        out_points_covariances[i] = cv::Mat1f(covar_points2d, cv::Rect(2*i, 2*i, 2, 2));
     }
 }
 
@@ -362,32 +362,33 @@ void renderObservationUncertainty(
     const Camera& calibrated_camera,
     const LabelObservation& observation)
 {
-    std::vector<cv::Point2f> points2d;
-    std::vector<cv::Matx22f> points2d_covariances;
+    std::vector<cv::Point2f> points;
+    std::vector<cv::Matx22f> points_covariances;
     projectOuterCubeCornersWithUncertainties(
-        calibrated_camera, observation, points2d, points2d_covariances);
+        calibrated_camera, observation, points, points_covariances);
 
     const cv::Scalar orange(0, 127, 255);
-    for (auto p : points2d)
+    for (auto p : points)
     {
         cv::circle(io_canvas, p, 1, orange);
     }
     std::vector<cv::Point2d> raw_ellipse_points2d;
     cv::ellipse2Poly(cv::Point2d(0,0), cv::Size2d(2,2), 0, 0, 360, 10, raw_ellipse_points2d);
-    for (size_t i = 0; i < points2d.size(); ++i)
+    for (size_t i = 0; i < points.size(); ++i)
     {
-        const cv::Matx22d covar_point2d = points2d_covariances[i];
-        const cv::Point2d point2d = points2d[i];
+        // Convert to double for convenience
+        const cv::Matx22d point_covariance = points_covariances[i];
+        const cv::Point2d point = points[i];
 
         cv::Vec2d eigenvalues;
         cv::Matx22d eigenvectors;
-        cv::eigen(covar_point2d, eigenvalues, eigenvectors);
+        cv::eigen(point_covariance, eigenvalues, eigenvectors);
         cv::sqrt(eigenvalues, eigenvalues);
         cv::Matx22d transform = eigenvectors * cv::Matx22d::diag(eigenvalues);
         std::vector<cv::Point> final_ellipse_points;
         for (const cv::Point2d p : raw_ellipse_points2d)
         {
-            final_ellipse_points.push_back(point2d + transform * p);
+            final_ellipse_points.push_back(point + transform * p);
         }
         cv::polylines(io_canvas, final_ellipse_points, true, orange);
     }
