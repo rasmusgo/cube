@@ -372,9 +372,9 @@ int main()
     std::vector<cv::Point2f> points_top    = findLabelPositions(img_top);
     std::vector<cv::Point2f> points_bottom = findLabelPositions(img_bottom);
 
-    Camera cam = solveCamera(points_top, points_bottom, img_top.size());
+    const Camera calibrated_camera = solveCamera(points_top, points_bottom, img_top.size());
     const float label_width = 0.9f;
-    analyzeVideo("video1", cam, label_width);
+    analyzeVideo("video3", calibrated_camera, label_width);
 
     setupWindows(img_bottom.size());
 
