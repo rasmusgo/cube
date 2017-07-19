@@ -6,7 +6,7 @@
 
 #include "GraphicalCube.hpp"
 
-static int window_width = 600;
+static int window_width = 720;
 static int window_height = 600;
 static GraphicalCube gCube;
 
@@ -18,8 +18,18 @@ void SetupOpenGL ()
     // Setup camera and projection
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    // left, right, bottom, top, near, far
-    glFrustum(-1, 1, -1, 1, 2, 10);
+    if (window_width > window_height)
+    {
+        const double w_over_h = double(window_width) / double(window_height);
+        // left, right, bottom, top, near, far
+        glFrustum(-w_over_h, w_over_h, -1, 1, 2, 10);
+    }
+    else
+    {
+        const double h_over_w = double(window_height) / double(window_width);
+        // left, right, bottom, top, near, far
+        glFrustum(-1.0, 1.0, -h_over_w, h_over_w, 2, 10);
+    }
 
     // Move the model in front of the camera
     glMatrixMode(GL_MODELVIEW);
@@ -143,7 +153,7 @@ int main(int argc, char **argv)
 
     glfwSetErrorCallback(error_callback);
 
-    GLFWwindow* window = glfwCreateWindow(640, 480, "CubeSolver", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(window_width, window_height, "CubeSolver", NULL, NULL);
 
     if (!window)
     {
