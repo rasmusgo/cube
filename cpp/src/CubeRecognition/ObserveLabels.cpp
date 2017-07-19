@@ -52,6 +52,17 @@ void renderCoordinateSystem(
     renderCoordinateSystem(io_canvas, cam);
 }
 
+cv::Matx66d expandMatx33to66(const cv::Matx33d& mat33)
+{
+    return *(cv::Matx66d() <<
+        mat33(0,0), mat33(0,1), mat33(0,2), 0, 0, 0,
+        mat33(1,0), mat33(1,1), mat33(1,2), 0, 0, 0,
+        mat33(2,0), mat33(2,1), mat33(2,2), 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1);
+}
+
 LabelObservation adjustedObservation(
     const LabelObservation& observation,
     const cv::Matx33d& adjustment)
@@ -91,21 +102,10 @@ LabelObservation adjustedObservation(
     const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec =
         rodriguesJacobian(adjusted_observation.rvec);
 
-    // (D rvec wrt adjusted rvec)(adjusted rvec)
-    const cv::Matx<double, 3, 3> J33_rvec_wrt_adj_rvec =
-//        J39_rvec_wrt_rmat * J93_adj_rmat_wrt_adj_rvec * adjustment.t();
-        (adjustment.t() == adjustment) ? // FIXME(Rasmus): Remove this dirty hack!
-        adjustment.t() * (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec : // perfect on most 180 degree rotations
-        (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec * adjustment.t(); // best so far (close to perfect on 90 degree rotations)
+    const cv::Matx66d A = expandMatx33to66(
+        (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec);
 
-    const cv::Matx66d J66_obs_wrt_adj_obs = *(cv::Matx66d() <<
-        J33_rvec_wrt_adj_rvec(0,0), J33_rvec_wrt_adj_rvec(0,1), J33_rvec_wrt_adj_rvec(0,2), 0, 0, 0,
-        J33_rvec_wrt_adj_rvec(1,0), J33_rvec_wrt_adj_rvec(1,1), J33_rvec_wrt_adj_rvec(1,2), 0, 0, 0,
-        J33_rvec_wrt_adj_rvec(2,0), J33_rvec_wrt_adj_rvec(2,1), J33_rvec_wrt_adj_rvec(2,2), 0, 0, 0,
-        0, 0, 0, 1, 0, 0,
-        0, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 1);
-    adjusted_observation.JtJ = J66_obs_wrt_adj_obs * observation.JtJ * J66_obs_wrt_adj_obs.t();
+    adjusted_observation.JtJ = A.t() * observation.JtJ * A;
 
     return adjusted_observation;
 }
@@ -145,9 +145,7 @@ LabelObservation adjustedObservation(
         return observation;
     }
 
-    LabelObservation adjusted_observation = adjustedObservation(observation, adjustment);
-
-    return adjusted_observation;
+    return adjustedObservation(observation, adjustment);
 }
 
 float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
