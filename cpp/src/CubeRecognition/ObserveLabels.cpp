@@ -75,6 +75,7 @@ LabelObservation adjustedObservation(
     const cv::Matx33d adjusted_obs_space_from_world = obs_space_from_world * adjustment;
     cv::Rodrigues(adjusted_obs_space_from_world, adj_obs.rvec);
 
+    // FIXME(Rasmus): This goes wrong sometimes. Could be related to singularities in rvec form.
     // Adjust JtJ
     const cv::Matx<double, 3, 9> J39_rvec_wrt_rmat = rodriguesJacobian(obs_space_from_world);
     const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec = rodriguesJacobian(adj_obs.rvec);
