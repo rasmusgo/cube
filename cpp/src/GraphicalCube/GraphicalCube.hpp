@@ -8,7 +8,8 @@
 
 #include "Sequence.hpp"
 
-class GraphicalCube {
+class GraphicalCube
+{
     twophase::FaceCube faceCube;
     // U R F D L B order
     // x axis is pointing towards R
@@ -29,9 +30,6 @@ public:
     GraphicalCube();
     GraphicalCube(const GraphicalCube &gc);
     ~GraphicalCube();
-
-private:
-    void init();
 
 public:
     void move(std::string str);

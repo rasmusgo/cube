@@ -43,7 +43,8 @@ GraphicalCube::GraphicalCube(const GraphicalCube &gc) :
     animationTime(0),
     search(NULL)
 {
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 6; ++i)
+    {
         faceRotations[i] = gc.faceRotations[i];
         for (int j = 0; j < 3; ++j)
             faceColors[i][j] = gc.faceColors[i][j];
@@ -52,66 +53,79 @@ GraphicalCube::GraphicalCube(const GraphicalCube &gc) :
         bottomColor[j] = bottomColor[j];
 }
 
-GraphicalCube::~GraphicalCube() {
+GraphicalCube::~GraphicalCube()
+{
     delete search;
 }
 
-void GraphicalCube::init() {
-    static bool initialized = false;
-    if (!initialized) {
-    }
-}
-
-void GraphicalCube::move(std::string str) {
+void GraphicalCube::move(std::string str)
+{
     Sequence seq(str);
 
-    if (seq.size() >= 2 && animations.size() > 0 && chainable(animations.back(), seq[1])) {
+    if (seq.size() >= 2 && animations.size() > 0 && chainable(animations.back(), seq[1]))
+    {
         animations.back().add(seq[0]);
         for (int i = 1; i < seq.size(); ++i)
             animate(seq[i]);
-    } else {
+    }
+    else
+    {
         for (int i = 0; i < seq.size(); ++i)
             animate(seq[i]);
     }
 }
 
-void GraphicalCube::animate(const Sequence::Animation &a) {
+void GraphicalCube::animate(const Sequence::Animation &a)
+{
     animations.push_back(a);
 }
 
-static float bringTowardsZero(float &value, float d) {
-    if (value > 0) {
-        if (value <= d) {
+static float bringTowardsZero(float &value, float d)
+{
+    if (value > 0)
+    {
+        if (value <= d)
+        {
             float rest = d - value;
             value = 0;
             return rest;
-        } else {
+        }
+        else
+        {
             value -= d;
             return 0;
         }
-    } else {
-        if (value >= -d) {
+    }
+    else
+    {
+        if (value >= -d)
+        {
             float rest = -d - value;
             value = 0;
             return rest;
-        } else {
+        }
+        else
+        {
             value += d;
             return 0;
         }
     }
 }
 
-static float interpolate(float a, float b, float x) {
-    return a + (b-a)*x;
+static float interpolate(float a, float b, float t)
+{
+    return a + (b-a) * t;
 }
 
 // Execute queued moves
-bool GraphicalCube::tick(float time) {
+bool GraphicalCube::tick(float time)
+{
     // Go forwards in time
     float rest = bringTowardsZero(animationTime, time);
 
     // Pop a new animation from the queue
-    if (animationTime == 0 && animations.size() > 0) {
+    if (animationTime == 0 && animations.size() > 0)
+    {
         activeAnimation = animations.front();
         animations.pop_front();
         animationTime = activeAnimation.time;
@@ -121,11 +135,12 @@ bool GraphicalCube::tick(float time) {
     }
 
     // Update angles
-    for (int i = 0; i < 3; ++i) {
-        float x = animationTime / activeAnimation.time;
-        float a = interpolate(activeAnimation.to[i][0], activeAnimation.from[i][0], x);
-        float b = interpolate(activeAnimation.to[i][1], activeAnimation.from[i][1], x);
-        float c = interpolate(activeAnimation.to[i][2], activeAnimation.from[i][2], x);
+    for (int i = 0; i < 3; ++i)
+    {
+        float t = animationTime / activeAnimation.time;
+        float a = interpolate(activeAnimation.to[i][0], activeAnimation.from[i][0], t);
+        float b = interpolate(activeAnimation.to[i][1], activeAnimation.from[i][1], t);
+        float c = interpolate(activeAnimation.to[i][2], activeAnimation.from[i][2], t);
         faceRotations[i]   = (a - b) * M_PI_2;
         faceRotations[i+3] = (b - c) * M_PI_2;
         centerRotation[i]  =  b      * M_PI_2;
@@ -135,12 +150,17 @@ bool GraphicalCube::tick(float time) {
 
 void GraphicalCube::randomize()
 {
-    try {
+    try
+    {
         faceCube = FaceCube( Tools::randomCube() );
-    } catch ( const char str[] ) {
+    }
+    catch ( const char str[] )
+    {
         printf("exception caught: %s\n", str);
         fflush(stdout);
-    } catch ( ... ) {
+    }
+    catch ( ... )
+    {
         printf("exception caught\n");
         fflush(stdout);
     }
@@ -177,15 +197,18 @@ void GraphicalCube::solve()
     this->move(str);
 }
 
-void GraphicalCube::clean() {
+void GraphicalCube::clean()
+{
     faceCube = FaceCube();
 }
 
-void GraphicalCube::setFaces(std::string str) {
+void GraphicalCube::setFaces(std::string str)
+{
     faceCube = FaceCube(str);
 }
 
-void GraphicalCube::drawCube() {
+void GraphicalCube::drawCube()
+{
     static GLfloat rotations[6][4] = {
         { -90, 1.0f, 0.0f, 0.0f }, // U
         {  90, 0.0f, 1.0f, 0.0f }, // R
@@ -203,7 +226,8 @@ void GraphicalCube::drawCube() {
 
     // Draw all centers
 //    int k = 0;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 6; ++i)
+    {
         glPushMatrix();
         glRotatef(rotations[i][0], rotations[i][1], rotations[i][2], rotations[i][3]);
         glRotatef(faceRotations[i] * (-180.0 / M_PI), 0.0f, 0.0f, 1.0f);
@@ -223,12 +247,13 @@ void GraphicalCube::drawCube() {
     // U, R, F, D, L, B
     float c[6]; // cos
     float s[6]; // sin
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 6; ++i)
+    {
         c[i] = cos(faceRotations[i]);
         s[i] = sin(faceRotations[i]);
     }
 
-    // Draw all edges
+    // Draw all edge pieces
 
     // These edge axes points in the direction of the normal to the facelet.
     // Together with their cross product, they build the coordinate system for each edge.
@@ -252,7 +277,8 @@ void GraphicalCube::drawCube() {
     };
 
     // Calculate the cross product which gives the third axis
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 12; ++i)
+    {
         float x1 = edge_axes[i][0][0];
         float x2 = edge_axes[i][0][1];
         float x3 = edge_axes[i][0][2];
@@ -264,16 +290,18 @@ void GraphicalCube::drawCube() {
         edge_axes[i][2][2] = x1*y2 - x2*y1;
     }
 
-    // Transform and draw each edge
+    // Transform and draw each edge piece
     GLfloat m[4*4];
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
             m[4*i+j] = 0;
     m[15] = 1;
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 12; ++i)
+    {
         // Insert the vectors into the matrix
-        for (int j = 0; j < 3; ++j) {
+        for (int j = 0; j < 3; ++j)
+        {
             for (int k = 0; k < 3; ++k)
                 m[4*j+k] = edge_axes[i][j][k];
         }
@@ -291,7 +319,7 @@ void GraphicalCube::drawCube() {
         glPopMatrix();
     }
 
-    // Draw all corners
+    // Draw all corner pieces
 
     // corner_axes is the coordinate system to draw corners in,
     // stored as references to edge_axes. ~ makes a value negative
@@ -312,15 +340,20 @@ void GraphicalCube::drawCube() {
             { BR, DB, DR }, // DRB
     };
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; ++i)
+    {
         // Insert the vectors into the matrix
-        for (int j = 0; j < 3; ++j) {
+        for (int j = 0; j < 3; ++j)
+        {
             int e = corner_axes[i][j];
-            if (e < 0) { // Mirror the axis if negative
+            if (e < 0) // Mirror the axis if negative
+            {
                 e = ~e;
                 for (int k = 0; k < 3; ++k)
                     m[4*j+k] = -edge_axes[e][2][k];
-            } else {
+            }
+            else
+            {
                 for (int k = 0; k < 3; ++k)
                     m[4*j+k] = edge_axes[e][2][k];
             }
@@ -343,12 +376,14 @@ void GraphicalCube::drawCube() {
     glPopMatrix();
 }
 
-void GraphicalCube::drawCenterPiece(float color[3]) {
+void GraphicalCube::drawCenterPiece(float color[3])
+{
     glColor3fv(color);
     drawFace(0,0);
 }
 
-void GraphicalCube::drawEdgePiece(float color1[3], float color2[3]) {
+void GraphicalCube::drawEdgePiece(float color1[3], float color2[3])
+{
     const float size = 0.4;
     glBegin(GL_QUADS);
     glColor3fv(color1);
@@ -366,7 +401,8 @@ void GraphicalCube::drawEdgePiece(float color1[3], float color2[3]) {
     glEnd();
 }
 
-void GraphicalCube::drawCornerPiece(float color1[3], float color2[3], float color3[3]) {
+void GraphicalCube::drawCornerPiece(float color1[3], float color2[3], float color3[3])
+{
     const float size = 0.4;
     glBegin(GL_QUADS);
     glColor3fv(color1);
@@ -390,7 +426,8 @@ void GraphicalCube::drawCornerPiece(float color1[3], float color2[3], float colo
     glEnd();
 }
 
-void GraphicalCube::drawFace(float x, float y) {
+void GraphicalCube::drawFace(float x, float y)
+{
     const float size = 0.4;
     glBegin(GL_QUADS);
     glNormal3f(0.0, 0.0, 1.0);
