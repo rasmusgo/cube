@@ -67,47 +67,22 @@ LabelObservation adjustedObservation(
     const LabelObservation& observation,
     const cv::Matx33d& adjustment)
 {
+    LabelObservation adj_obs = observation;
+
+    // Adjust rvec.
     cv::Matx33d obs_space_from_world;
     cv::Rodrigues(observation.rvec, obs_space_from_world);
     const cv::Matx33d adjusted_obs_space_from_world = obs_space_from_world * adjustment;
+    cv::Rodrigues(adjusted_obs_space_from_world, adj_obs.rvec);
 
-    LabelObservation adjusted_observation = observation;
-    cv::Rodrigues(adjusted_obs_space_from_world, adjusted_observation.rvec);
-
-    // J is [2N x 10+numDist+3N] and describes how the 2D points are affected
-    // by changes in rvec, tvec, and 3D points.
-    // JtJ is [10+numDist+3N x 10+numDist+3N] and describes how sensitive the
-    // sum of squared differences of 2D points is to changes in rvec, tvec,
-    // intrinsics, and 3D points.
-
-    // We want to know how sensitive the sum of squared differences of 2D points
-    // is with respect to changes in adjusted rvec and adjusted tvec.
-    // To find that out we need to know how sensitive rvec and tvec are with
-    // respect to changes in adjusted rvec and adjusted tvec.
-    // tvec is not transformed, only rvec:
-    //             adjusted rvec                      = toVec(toMat(rvec) * adjustment)
-    //       toMat(adjusted rvec)                     =       toMat(rvec) * adjustment
-    //       toMat(adjusted rvec) * adjustment.inv()  =       toMat(rvec)
-    // toVec(toMat(adjusted rvec) * adjustment.inv()) =             rvec
-    //
-    // D rvec wrt adjusted rvec = D toVec(toMat(adjusted rvec) * adjustment.inv()) wrt adjusted rvec
-    // D rvec wrt adjusted rvec = (D toVec wrt rmat)(rmat) * (D toMat(adjusted rvec) * adjustment.inv() wrt adjusted rvec)
-    // D rvec wrt adjusted rvec = (D toVec wrt rmat)(rmat) * (D toMat wrt adjusted rvec)(adjusted rvec) * adjustment.inv()
-
-    // (D toVec wrt rmat)(rmat)
-    const cv::Matx<double, 3, 9> J39_rvec_wrt_rmat =
-        rodriguesJacobian(obs_space_from_world);
-
-    // (D toMat wrt adjusted rvec)(adjusted rvec)
-    const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec =
-        rodriguesJacobian(adjusted_observation.rvec);
-
+    // Adjust JtJ
+    const cv::Matx<double, 3, 9> J39_rvec_wrt_rmat = rodriguesJacobian(obs_space_from_world);
+    const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec = rodriguesJacobian(adj_obs.rvec);
     const cv::Matx66d A = expandMatx33to66(
         (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec);
+    adj_obs.JtJ = A.t() * observation.JtJ * A;
 
-    adjusted_observation.JtJ = A.t() * observation.JtJ * A;
-
-    return adjusted_observation;
+    return adj_obs;
 }
 
 LabelObservation adjustedObservation(
@@ -124,7 +99,6 @@ LabelObservation adjustedObservation(
     //                            target_from_world ~= obs_space_from_world * adjustment
     // obs_space_from_world.t() * target_from_world ~=                        adjustment
     const cv::Matx33d raw_adjustment = obs_space_from_world.t() * target_from_world;
-    //const cv::Matx33d raw_adjustment = (target_from_world * obs_space_from_world.t()).t();
 
     cv::Matx33d adjustment = closest90DegreeRotation(raw_adjustment);
     if (cv::determinant(adjustment) != 1.0)
