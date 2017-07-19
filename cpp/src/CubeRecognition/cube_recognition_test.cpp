@@ -129,6 +129,8 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
                 assert(adjusted_points.size() == original_points.size());
                 for (size_t i = 0; i < adjusted_points.size(); ++i)
                 {
+                    assert(cv::norm(cv::Mat(adjusted_points[i]),
+                        cv::Mat(original_points[i]), cv::NORM_L2SQR) < 1.0);
                     sum_squared_errors += cv::norm(cv::Mat(adjusted_points_covariances[i]),
                         cv::Mat(original_points_covariances[i]), cv::NORM_L2SQR);
                 }
