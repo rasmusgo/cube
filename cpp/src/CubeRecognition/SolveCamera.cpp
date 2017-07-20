@@ -173,45 +173,6 @@ std::vector<cv::Point2f> projectCube(const Camera& cam)
     return points2d;
 }
 
-std::vector<cv::Point2f> projectCubeCorners(const Camera& cam, float label_width)
-{
-    // Generate 3D points.
-    const float half_width = label_width * 0.5f;
-    std::vector<cv::Point3f> points3d;
-    for (int side = 0; side < 6; ++side)
-    {
-        for (int y : {-1, 0, 1})
-        {
-            for (int x : {-1, 0, 1})
-            {
-                points3d.push_back(idTo3d(side, x + half_width, y - half_width));
-                points3d.push_back(idTo3d(side, x - half_width, y - half_width));
-                points3d.push_back(idTo3d(side, x - half_width, y + half_width));
-                points3d.push_back(idTo3d(side, x + half_width, y + half_width));
-            }
-        }
-    }
-
-    std::vector<cv::Point2f> points2d;
-    cv::projectPoints(points3d, cam.rvec, cam.tvec, cam.camera_matrix, cam.dist_coeffs, points2d);
-
-    std::vector<cv::Point2f> visible_points2d;
-    for (int i = 0; i < points2d.size(); i += 4)
-    {
-        // Pick 4 points that make up a label.
-        cv::Mat1f contour = cv::Mat(points2d).reshape(1, points2d.size())(cv::Rect(0, i, 2, 4));
-        // Backface or frontface?
-        if (cv::contourArea(contour, true) < 0)
-        {
-            for (int j = 0; j < 4; ++j)
-            {
-                visible_points2d.push_back(points2d[i + j]);
-            }
-        }
-    }
-    return visible_points2d;
-}
-
 void renderCoordinateSystem(cv::Mat3b& io_canvas, const Camera& cam)
 {
     const std::vector<cv::Point3f> points3d = {

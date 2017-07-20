@@ -39,8 +39,14 @@ std::vector<cv::Point2f> projectCubeCorners(
     const LabelObservation& observation,
     float label_width)
 {
-    const Camera cam = cameraFromObservation(calibrated_camera, observation);
-    return projectCubeCorners(cam, label_width);
+    ProbabalisticCube cube;
+    cube.pose_estimate[0] = observation.tvec[0];
+    cube.pose_estimate[1] = observation.tvec[1];
+    cube.pose_estimate[2] = observation.tvec[2];
+    cube.pose_estimate[3] = observation.rvec[0];
+    cube.pose_estimate[4] = observation.rvec[1];
+    cube.pose_estimate[5] = observation.rvec[2];
+    return projectCubeCorners(calibrated_camera, cube, label_width);
 }
 
 void renderCoordinateSystem(

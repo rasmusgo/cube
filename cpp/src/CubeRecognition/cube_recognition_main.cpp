@@ -217,14 +217,8 @@ void showMostLikelyCube(
 
     const ProbabalisticCube& cube =
         *std::max_element(cubes.begin(), cubes.end(), compareCubeLikelihoods);
-    Camera camera = calibrated_camera;
-    camera.tvec[0] = cube.pose_estimate[0];
-    camera.tvec[1] = cube.pose_estimate[1];
-    camera.tvec[2] = cube.pose_estimate[2];
-    camera.rvec[0] = cube.pose_estimate[3];
-    camera.rvec[1] = cube.pose_estimate[4];
-    camera.rvec[2] = cube.pose_estimate[5];
-    const std::vector<cv::Point2f> projected_corners = projectCubeCorners(camera, label_width);
+    const std::vector<cv::Point2f> projected_corners =
+        projectCubeCorners(calibrated_camera, cube, label_width);
     cv::Mat3b canvas = img * 0.25f;
     for (int i = 0; i < projected_corners.size(); i += 4)
     {

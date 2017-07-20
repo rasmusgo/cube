@@ -4,6 +4,8 @@
 
 #include <SolverLib/FaceCube.hpp>
 
+#include "SolveCamera.hpp"
+
 struct ProbabalisticCube
 {
     double log_likelihood = 0;
@@ -36,3 +38,8 @@ void normalizeLikelihood(std::vector<ProbabalisticCube>& cubes);
 std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& parent);
 std::vector<ProbabalisticCube> predict(const std::vector<ProbabalisticCube>& cubes);
 void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num);
+
+std::vector<cv::Point2f> projectCubeCorners(
+    const Camera& calibrated_camera,
+    const ProbabalisticCube& cube,
+    float label_width);

@@ -7,6 +7,8 @@
 
 #include <SolverLib/FaceCube.hpp>
 
+#include "SolveCamera.hpp"
+
 const ProbabalisticCube::PoseMatrix pose_prediction_uncertainty =
     ProbabalisticCube::PoseMatrix::eye() * 1.0;
 
@@ -191,4 +193,57 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
         cubes.resize(max_num);
     }
     normalizeLikelihood(cubes);
+}
+
+std::vector<cv::Point2f> pickVisibleLabels(const std::vector<cv::Point2f>& points2d)
+{
+    std::vector<cv::Point2f> visible_points2d;
+    for (int i = 0; i < points2d.size(); i += 4)
+    {
+        // Pick 4 points that make up a label.
+        cv::Mat1f contour = cv::Mat(points2d).reshape(1, points2d.size())(cv::Rect(0, i, 2, 4));
+        // Backface or frontface?
+        if (cv::contourArea(contour, true) < 0)
+        {
+            for (int j = 0; j < 4; ++j)
+            {
+                visible_points2d.push_back(points2d[i + j]);
+            }
+        }
+    }
+
+    return visible_points2d;
+}
+
+std::vector<cv::Point2f> projectCubeCorners(
+    const Camera& calibrate_camera,
+    const ProbabalisticCube& cube,
+    float label_width)
+{
+    // Generate 3D points.
+    const float half_width = label_width * 0.5f;
+    std::vector<cv::Point3f> points3d;
+    for (int side = 0; side < 6; ++side)
+    {
+        for (int y : {-1, 0, 1})
+        {
+            for (int x : {-1, 0, 1})
+            {
+                points3d.push_back(idTo3d(side, x + half_width, y - half_width));
+                points3d.push_back(idTo3d(side, x - half_width, y - half_width));
+                points3d.push_back(idTo3d(side, x - half_width, y + half_width));
+                points3d.push_back(idTo3d(side, x + half_width, y + half_width));
+            }
+        }
+    }
+
+    const cv::Vec3d rvec(cube.pose_estimate[3], cube.pose_estimate[4], cube.pose_estimate[5]);
+    const cv::Vec3d tvec(cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
+    std::vector<cv::Point2f> points2d;
+    cv::projectPoints(points3d, rvec, tvec,
+        calibrate_camera.camera_matrix,
+        calibrate_camera.dist_coeffs,
+        points2d);
+
+    return pickVisibleLabels(points2d);
 }
