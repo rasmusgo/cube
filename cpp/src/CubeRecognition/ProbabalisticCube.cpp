@@ -229,10 +229,46 @@ std::vector<cv::Point2f> projectCubeCorners(
         {
             for (int x : {-1, 0, 1})
             {
-                points3d.push_back(idTo3d(side, x + half_width, y - half_width));
-                points3d.push_back(idTo3d(side, x - half_width, y - half_width));
-                points3d.push_back(idTo3d(side, x - half_width, y + half_width));
-                points3d.push_back(idTo3d(side, x + half_width, y + half_width));
+                const cv::Point3f label_center = idTo3d(side, x, y);
+                cv::Vec3f cubie_rvec(0, 0, 0);
+                // U  R  F  D' L'  B'
+                // 6  7  8  9  10  11
+                if (label_center.y < 0)
+                {
+                    // Affected by U
+                    cubie_rvec[1] += cube.pose_estimate[6];
+                }
+                if (label_center.x > 0)
+                {
+                    // Affected by R
+                    cubie_rvec[0] -= cube.pose_estimate[7];
+                }
+                if (label_center.z < 0)
+                {
+                    // Affected by F
+                    cubie_rvec[2] += cube.pose_estimate[8];
+                }
+                if (label_center.y > 0)
+                {
+                    // Affected by D
+                    cubie_rvec[1] += cube.pose_estimate[9];
+                }
+                if (label_center.x < 0)
+                {
+                    // Affected by L
+                    cubie_rvec[0] -= cube.pose_estimate[10];
+                }
+                if (label_center.z > 0)
+                {
+                    // Affected by B
+                    cubie_rvec[2] += cube.pose_estimate[11];
+                }
+                cv::Matx33f cubie_rmat;
+                cv::Rodrigues(cubie_rvec, cubie_rmat);
+                points3d.push_back(cubie_rmat * idTo3d(side, x + half_width, y - half_width));
+                points3d.push_back(cubie_rmat * idTo3d(side, x - half_width, y - half_width));
+                points3d.push_back(cubie_rmat * idTo3d(side, x - half_width, y + half_width));
+                points3d.push_back(cubie_rmat * idTo3d(side, x + half_width, y + half_width));
             }
         }
     }
