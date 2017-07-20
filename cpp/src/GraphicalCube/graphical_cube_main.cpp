@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 
     glfwSetErrorCallback(error_callback);
 
-    GLFWwindow* window = glfwCreateWindow(window_width, window_height, "CubeSolver", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(window_width, window_height, "GraphicalCube", NULL, NULL);
 
     if (!window)
     {
