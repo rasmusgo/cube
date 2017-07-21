@@ -15,8 +15,8 @@ struct ProbabalisticCube
     // * rotation (U, R, F)
     // * side rotations (U R F D' L' B')
     static const int D = 12;
-    using PoseVector = cv::Vec<float, D>;
-    using PoseMatrix = cv::Matx<float, D, D>;
+    using PoseVector = cv::Vec<double, D>;
+    using PoseMatrix = cv::Matx<double, D, D>;
     PoseVector pose_estimate = {0, 0, 10};
     PoseMatrix pose_covariance{PoseMatrix::eye() * 10};
 
