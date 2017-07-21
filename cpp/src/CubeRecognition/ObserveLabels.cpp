@@ -212,7 +212,7 @@ std::vector<LabelObservation> generateObservationsForLabel(
             projectCubeCorners(calibrated_camera, observation, label_width);
         observation.score = scorePredictedCorners(predicted_corners, detected_corners);
 
-        observation_candidates.push_back(std::move(observation));
+        observation_candidates.push_back(adjustedObservation(observation, cv::Vec3d(0, 0, 0)));
     }
     return observation_candidates;
 }
