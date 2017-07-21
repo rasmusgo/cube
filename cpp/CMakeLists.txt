@@ -7,11 +7,11 @@ set(CMAKE_CXX_STANDARD 11)
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
 set(LIBRARY_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/lib")
 
-add_subdirectory("thirdparty/glfw-3.1.2")
+add_subdirectory("thirdparty/glfw-3.1.2" EXCLUDE_FROM_ALL)
 
 include_directories(
-	"${PROJECT_SOURCE_DIR}/src"
-	"${PROJECT_SOURCE_DIR}/thirdparty/glfw-3.1.2/include"
+    "${PROJECT_SOURCE_DIR}/src"
+    "${PROJECT_SOURCE_DIR}/thirdparty/glfw-3.1.2/include"
 )
 
 find_package(OpenCV REQUIRED)
