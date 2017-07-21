@@ -15,5 +15,5 @@ void stopTimer()
     const auto timer_stop = std::chrono::steady_clock::now();
     const auto milliseconds =
         std::chrono::duration_cast<std::chrono::milliseconds>(timer_stop - timer_start);
-    printf("Timer counted %.2f seconds.", milliseconds.count() * 0.001);
+    printf("Timer counted %.2f seconds.\n", milliseconds.count() * 0.001);
 }
