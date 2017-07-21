@@ -15,27 +15,27 @@ cv::Point3f idTo3d(int side, float id_x, float id_y)
 {
     if (side == 0) // F
     {
-        return cv::Point3f(id_x, -id_y, 1.5f);
+        return cv::Point3f(id_x, id_y, -1.5f);
     }
     if (side == 1) // R
     {
-        return cv::Point3f(1.5f, -id_y, -id_x);
+        return cv::Point3f(1.5f, id_y, id_x);
     }
     if (side == 2) // U
     {
-        return cv::Point3f(id_x, 1.5f, id_y);
+        return cv::Point3f(id_x, -1.5f, -id_y);
     }
     if (side == 3) // B
     {
-        return cv::Point3f(-id_x, -id_y, -1.5f);
+        return cv::Point3f(-id_x, id_y, 1.5f);
     }
     if (side == 4) // L
     {
-        return cv::Point3f(-1.5f, -id_y, id_x);
+        return cv::Point3f(-1.5f, id_y, -id_x);
     }
     if (side == 5) // D
     {
-        return cv::Point3f(-id_x, -1.5f, id_y);
+        return cv::Point3f(-id_x, 1.5f, -id_y);
     }
     printf("unsupported side in idTo3d: %d\n", side);
     assert(false);
