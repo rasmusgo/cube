@@ -200,9 +200,13 @@ void printMostLikelyCubes(const std::vector<ProbabalisticCube>& cube_hypotheses)
         const ProbabalisticCube& cube = cube_hypotheses[i];
         const std::string permutation = cube.cube_permutation.to_String();
         const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
-        printf("%d: %s (%4.1f, %4.1f, %4.1f) %3.5f%%\n", i, permutation.c_str(),
-            cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2],
-            likelihood_percent);
+        printf("%d: %s (%4.1f, %4.1f, %4.1f", i, permutation.c_str(),
+            cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
+        for (int j = 3; j < 12; ++j)
+        {
+            printf(", %5.2f", cube.pose_estimate[j]);
+        }
+        printf(") %3.5f%%\n", likelihood_percent);
     }
 }
 
