@@ -15,7 +15,7 @@
 #include "SolveCamera.hpp"
 #include "Timer.hpp"
 
-const size_t kMaxNumHypotheses = 216;
+const size_t kMaxNumHypotheses = 19;
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
 void setupWindows(const cv::Size& img_size)
