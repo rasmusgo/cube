@@ -9,20 +9,13 @@
 
 #include "SolveCamera.hpp"
 
-const ProbabalisticCube::PoseMatrix pose_prediction_uncertainty =
-    ProbabalisticCube::PoseMatrix::eye() * 1.0;
-
-double ProbabalisticCube::relativeLogLikelihoodOfRotations()
-{
-    double score = 0;
-    for (int i = 3; i < D; ++i)
-    {
-        // The likelihood is rated as proportial to exp(-rotation^2)
-        // thus promoting rotations closer to zero.
-        score -= pose_estimate[i] * pose_estimate[i];
-    }
-    return score;
-}
+static const double angle_increment = 22.5 / 180 * M_PI;
+static const ProbabalisticCube::PoseMatrix pose_prediction_uncertainty =
+    ProbabalisticCube::PoseMatrix::diag(ProbabalisticCube::PoseMatrix::diag_type(
+    1.0, 1.0, 1.0, // position
+    angle_increment, angle_increment, angle_increment, // rotation
+    angle_increment, angle_increment, angle_increment, // side rotations (URF)
+    angle_increment, angle_increment, angle_increment)); // side rotations (D'L'B')
 
 /// Normalize likelihood of cubes so that the sum of likelihood is 1.0
 void normalizeLikelihood(std::vector<ProbabalisticCube>& cubes)
@@ -54,16 +47,104 @@ void normalizeLikelihood(std::vector<ProbabalisticCube>& cubes)
     }
 }
 
+cv::Vec3d composeRotation(const cv::Vec3d& a, const cv::Vec3d& b)
+{
+    cv::Matx33d a_mat;
+    cv::Rodrigues(a, a_mat);
+    cv::Matx33d b_mat;
+    cv::Rodrigues(b, b_mat);
+    cv::Vec3d c;
+    cv::Rodrigues(a_mat * b_mat, c);
+    return c;
+}
+
+void propagateContinousRotationsToDiscrete(ProbabalisticCube& io_cube)
+{
+    const double turning_threshold = M_PI / 3.0; // Two thirds of a "move"
+    // TODO(Rasmus): Whole cube rotations!
+    cv::Vec3d rvec(io_cube.pose_estimate[3], io_cube.pose_estimate[4], io_cube.pose_estimate[5]);
+
+    bool has_moved_whole_cube = false;
+    while (
+        std::abs(rvec[0]) > turning_threshold ||
+        std::abs(rvec[1]) > turning_threshold ||
+        std::abs(rvec[2]) > turning_threshold)
+    {
+        double max_rotation_i = 0;
+        double max_rotation_magnitude = 0;
+        for (int i = 0; i < 3; ++i)
+        {
+            const double rotation_magnitude = std::abs(rvec[i]);
+            if (rotation_magnitude > max_rotation_magnitude)
+            {
+                max_rotation_i = i;
+                max_rotation_magnitude = rotation_magnitude;
+            }
+        }
+        cv::Vec3d delta_rvec(0, 0, 0);
+        delta_rvec[max_rotation_i] = rvec[max_rotation_i] > 0 ? M_PI_2 : -M_PI_2;
+
+        // Subtract from continous part.
+        rvec = composeRotation(rvec, -delta_rvec);
+
+        // TODO(Rasmus): Update covariance matrix to handle side rotations (face moves) properly.
+
+        // Add to discrete part.
+        const cv::Matx33d urf_from_xyz(
+            0, 1, 0,
+            -1, 0, 0,
+            0, 0, 1);
+        cv::Vec3d delta_urf = urf_from_xyz * delta_rvec / M_PI_2;
+        for (int i = 0; i < 3; ++i)
+        {
+            const int direction = std::round(delta_urf[i]);
+            if (direction != 0)
+            {
+                io_cube.cube_permutation.moveAxis(i, direction, direction, direction);
+            }
+        }
+        if (has_moved_whole_cube)
+        {
+            printf("WARNING: Executing multiple whole cube moves in propagateContinousRotationsToDiscrete!\n");
+        }
+        has_moved_whole_cube = true;
+    }
+
+    // Handle face rotations
+    bool has_moved_face = false;
+    for (int i = 0; i < 6; ++i)
+    {
+        assert(std::isfinite(io_cube.pose_estimate[i + 6]));
+        while (std::abs(io_cube.pose_estimate[i + 6]) > turning_threshold)
+        {
+            const int direction = io_cube.pose_estimate[i + 6] > 0 ? 1 : -1;
+            io_cube.pose_estimate[i + 6] -= direction * M_PI_2;
+            io_cube.cube_permutation.moveAxis(
+                i % 3,
+                i < 3 ? direction : 0, // U,R,F
+                0,
+                i >= 3 ? direction : 0); // D',L',B'
+            if (has_moved_face)
+            {
+                printf("WARNING: Executing multiple face moves in propagateContinousRotationsToDiscrete!\n");
+            }
+            has_moved_face = true;
+        }
+    }
+}
+
 std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& parent)
 {
-    // Create a new cube pose distribution by applying possible moves (discrete permutations)
+    assert(std::isfinite(parent.log_likelihood));
+    // Create a new cube pose distribution by applying possible moves
     // and rating the likelihood of them occuring.
     // The moves considered are:
-    // * Whole cube rotations (+/-90 degrees, 3 axis = 6 moves)
-    // * Face moves (6 faces, +/- 90 degrees = 12 moves)
+    // * Whole cube rotations (+/-22.5 degrees, 3 axis = 6 moves)
+    // * Face moves (6 faces, +/- 22.5 degrees = 12 moves)
 
     ProbabalisticCube child_template = parent;
     child_template.pose_covariance += pose_prediction_uncertainty;
+    child_template.log_likelihood = std::log(1.0); // One "part" likelihood
 
     std::vector<ProbabalisticCube> children;
     for (int i = 0; i < 3; ++i)
@@ -72,31 +153,30 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
         {
             { // Whole cube rotation
                 ProbabalisticCube child = child_template;
-                child.pose_estimate[i + 3] -= M_PI_2 * direction;
-                child.cube_permutation.moveAxis(i, direction, direction, direction);
+                child.pose_estimate[i + 3] += angle_increment * direction;
                 children.push_back(std::move(child));
             }
             { // Nearby side rotation
                 ProbabalisticCube child = child_template;
-                child.pose_estimate[i + 6] -= M_PI_2 * direction;
-                child.cube_permutation.moveAxis(i, direction, 0, 0);
+                child.pose_estimate[i + 6] += angle_increment * direction;
                 children.push_back(std::move(child));
             }
             { // Remote side rotation
                 ProbabalisticCube child = child_template;
-                child.pose_estimate[i + 9] -= M_PI_2 * direction;
-                child.cube_permutation.moveAxis(i, 0, 0, direction);
+                child.pose_estimate[i + 9] += angle_increment * direction;
                 children.push_back(std::move(child));
             }
         }
     }
     // No rotation
     children.push_back(child_template);
+    // Likelihood of not moving any side is considered 50% (as likely as all moves combined).
+    children.back().log_likelihood = std::log(children.size() - 1);
 
-    // Compute relative likelihood
+    // Propagate rotations from continous part of representation to discrete part.
     for (ProbabalisticCube& child : children)
     {
-        child.log_likelihood = child.relativeLogLikelihoodOfRotations();
+        propagateContinousRotationsToDiscrete(child);
     }
 
     // Normalize and multiply with parent likelihood
@@ -104,6 +184,7 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
     for (ProbabalisticCube& child : children)
     {
         child.log_likelihood += parent.log_likelihood; // Multiply with parent likelihood.
+        assert(std::isfinite(child.log_likelihood));
     }
     return children;
 }
@@ -151,7 +232,7 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
         {
             for (auto it = equal_range.first; it != equal_range.second; ++it)
             {
-                const float max_difference = 1.0e-6;
+                const double max_difference = 1.0e-6;
                 if (!closeToEqual(cube.pose_estimate, it->second.pose_estimate, max_difference))
                 {
                     continue;
