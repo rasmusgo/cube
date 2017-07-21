@@ -43,3 +43,8 @@ std::vector<cv::Point2f> projectCubeCorners(
     const Camera& calibrated_camera,
     const ProbabalisticCube& cube,
     float label_width);
+
+void renderCoordinateSystem(
+    cv::Mat3b& io_canvas,
+    const Camera& calibrated_camera,
+    const ProbabalisticCube& cube);

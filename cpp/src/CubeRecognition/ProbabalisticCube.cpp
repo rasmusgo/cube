@@ -283,3 +283,14 @@ std::vector<cv::Point2f> projectCubeCorners(
 
     return pickVisibleLabels(points2d);
 }
+
+void renderCoordinateSystem(
+    cv::Mat3b& io_canvas,
+    const Camera& calibrated_camera,
+    const ProbabalisticCube& cube)
+{
+    Camera cam = calibrated_camera;
+    cam.rvec = cv::Vec3d(cube.pose_estimate[3], cube.pose_estimate[4], cube.pose_estimate[5]);
+    cam.tvec = cv::Vec3d(cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
+    renderCoordinateSystem(io_canvas, cam);
+}

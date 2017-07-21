@@ -230,6 +230,7 @@ void showMostLikelyCube(
         };
         cv::polylines(canvas, corners, true, cv::Scalar(0, 255, 255));
     }
+    renderCoordinateSystem(canvas, calibrated_camera, cube);
     for (int i = 0; i < cube.pose_covariance.rows; ++i)
     {
         for (int j = 0; j < cube.pose_covariance.cols; ++j)
