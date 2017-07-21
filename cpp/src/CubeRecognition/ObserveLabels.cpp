@@ -178,10 +178,10 @@ std::vector<LabelObservation> generateObservationsForLabel(
             {
                 std::vector<cv::Point3f> label_points3d;
                 label_points3d.reserve(4);
-                label_points3d.emplace_back(x + half_width, y + half_width, 1.5f);
-                label_points3d.emplace_back(x - half_width, y + half_width, 1.5f);
-                label_points3d.emplace_back(x - half_width, y - half_width, 1.5f);
-                label_points3d.emplace_back(x + half_width, y - half_width, 1.5f);
+                label_points3d.emplace_back(x + half_width, y - half_width, -1.5f);
+                label_points3d.emplace_back(x - half_width, y - half_width, -1.5f);
+                label_points3d.emplace_back(x - half_width, y + half_width, -1.5f);
+                label_points3d.emplace_back(x + half_width, y + half_width, -1.5f);
                 point_groups.push_back(std::move(label_points3d));
             }
         }
