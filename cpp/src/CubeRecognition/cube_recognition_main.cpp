@@ -204,7 +204,7 @@ void printMostLikelyCubes(const std::vector<ProbabalisticCube>& cube_hypotheses)
             cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
         for (int j = 3; j < 12; ++j)
         {
-            printf(", %5.2f", cube.pose_estimate[j]);
+            printf(", %+3.0f°", cube.pose_estimate[j] * 180.0 / M_PI);
         }
         printf(") %3.5f%%\n", likelihood_percent);
     }
