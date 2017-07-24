@@ -232,12 +232,8 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
         {
             for (auto it = equal_range.first; it != equal_range.second; ++it)
             {
-                const double max_difference = 1.0e-6;
+                const double max_difference = 0.1;
                 if (!closeToEqual(cube.pose_estimate, it->second.pose_estimate, max_difference))
-                {
-                    continue;
-                }
-                if (!closeToEqual(cube.pose_covariance, it->second.pose_covariance, max_difference))
                 {
                     continue;
                 }
@@ -248,10 +244,41 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
 
         if (match != equal_range.second)
         {
-            double max_log_likelihood = std::max(match->second.log_likelihood, cube.log_likelihood);
+            // We found a match!
+            const ProbabalisticCube& a = match->second;
+            const ProbabalisticCube& b = cube;
+            double max_log_likelihood = std::max(a.log_likelihood, b.log_likelihood);
             match->second.log_likelihood = max_log_likelihood + log(
-                exp(match->second.log_likelihood - max_log_likelihood) +
-                exp(cube.log_likelihood - max_log_likelihood));
+                exp(a.log_likelihood - max_log_likelihood) +
+                exp(b.log_likelihood - max_log_likelihood));
+            // Update covariance by covariance intersection.
+            const ProbabalisticCube::PoseMatrix a_information_matrix = a.pose_covariance.inv();
+            const ProbabalisticCube::PoseMatrix b_information_matrix = b.pose_covariance.inv();
+            double best_t = 1.0;
+            double best_trace = cv::trace(b_information_matrix);
+            const size_t num_tests = 100;
+            for (size_t i = 0; i < num_tests; ++i)
+            {
+                const double t = double(i) / double(num_tests);
+                const ProbabalisticCube::PoseMatrix interpolated_information_matrix =
+                    a_information_matrix * (1.0 - t) + b_information_matrix * t;
+                const double trace = cv::trace(interpolated_information_matrix);
+                if (trace > best_trace)
+                {
+                    best_t = t;
+                    best_trace = trace;
+                }
+            }
+            const ProbabalisticCube::PoseMatrix interpolated_information_matrix =
+                a_information_matrix * (1.0 - best_t) + b_information_matrix * best_t;
+            match->second.pose_covariance = interpolated_information_matrix.inv();
+
+            const ProbabalisticCube::PoseVector a_information_vector = a_information_matrix * a.pose_estimate;
+            const ProbabalisticCube::PoseVector b_information_vector = b_information_matrix * b.pose_estimate;
+            const ProbabalisticCube::PoseVector interpolated_information_vector =
+                a_information_vector * (1.0 - best_t) + b_information_vector * best_t;
+            match->second.pose_estimate =
+                match->second.pose_covariance * interpolated_information_vector;
         }
         else
         {
