@@ -367,6 +367,8 @@ int main()
 
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
+    assert(!img_top.empty());
+    assert(!img_bottom.empty());
 
     std::vector<cv::Point2f> points_top    = findLabelPositions(img_top);
     std::vector<cv::Point2f> points_bottom = findLabelPositions(img_bottom);
