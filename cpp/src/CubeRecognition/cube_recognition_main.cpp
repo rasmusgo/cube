@@ -192,21 +192,53 @@ void handleKeys(int& io_frame_i, int key)
     }
 }
 
+void printCube(const ProbabalisticCube& cube, int i)
+{
+    const std::string permutation = cube.cube_permutation.to_String();
+    const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
+    printf("%d: %s (%4.1f, %4.1f, %4.1f", i, permutation.c_str(),
+        cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
+    for (int j = 3; j < 12; ++j)
+    {
+        printf(", %+3.0f°", cube.pose_estimate[j] * 180.0 / M_PI);
+    }
+    printf(") %3.5f%%\n", likelihood_percent);
+}
+
+template <typename T>
+bool contains(const std::vector<T>& haystack, const T& needle)
+{
+    return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+}
+
 void printMostLikelyCubes(const std::vector<ProbabalisticCube>& cube_hypotheses)
 {
     printf("Most likely cubes:\n");
+    std::vector<std::string> seen_permutations;
     for (int i = 0; i < cube_hypotheses.size() && i < 5; ++i)
     {
-        const ProbabalisticCube& cube = cube_hypotheses[i];
-        const std::string permutation = cube.cube_permutation.to_String();
-        const double likelihood_percent = exp(cube.log_likelihood) * 100.0;
-        printf("%d: %s (%4.1f, %4.1f, %4.1f", i, permutation.c_str(),
-            cube.pose_estimate[0], cube.pose_estimate[1], cube.pose_estimate[2]);
-        for (int j = 3; j < 12; ++j)
+        printCube(cube_hypotheses[i], i);
+
+        const std::string permutation = cube_hypotheses[i].cube_permutation.to_String();
+        if (!contains(seen_permutations, permutation))
         {
-            printf(", %+3.0f°", cube.pose_estimate[j] * 180.0 / M_PI);
+            seen_permutations.push_back(permutation);
         }
-        printf(") %3.5f%%\n", likelihood_percent);
+    }
+    bool has_printed_dots = false;
+    for (int i = 5; i < cube_hypotheses.size(); ++i)
+    {
+        const std::string permutation = cube_hypotheses[i].cube_permutation.to_String();
+        if (!contains(seen_permutations, permutation))
+        {
+            seen_permutations.push_back(permutation);
+            if (!has_printed_dots)
+            {
+                printf("...\n");
+                has_printed_dots = true;
+            }
+            printCube(cube_hypotheses[i], i);
+        }
     }
 }
 
