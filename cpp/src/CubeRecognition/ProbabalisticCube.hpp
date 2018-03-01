@@ -6,6 +6,8 @@
 
 #include "SolveCamera.hpp"
 
+extern const cv::Matx33d urf_from_xyz;
+
 struct ProbabalisticCube
 {
     double log_likelihood = 0;
@@ -17,7 +19,10 @@ struct ProbabalisticCube
     static const int D = 12;
     using PoseVector = cv::Vec<double, D>;
     using PoseMatrix = cv::Matx<double, D, D>;
-    PoseVector pose_estimate = {0, 0, 10};
+    PoseVector pose_estimate{
+        0, 0, 10, // position
+        0, 0, 0,  // rotation
+        0, 0, 0}; // first three side rotations
     PoseMatrix pose_covariance{PoseMatrix::eye() * 10};
 
     double relativeLogLikelihoodOfRotations();

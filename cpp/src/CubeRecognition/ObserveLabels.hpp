@@ -7,14 +7,13 @@
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
 
-extern const cv::Matx<double, 6, 12> observed_space_from_state_space;
+extern const cv::Matx<double, 6, 12> camera_space_from_state_space;
 
 struct LabelObservation
 {
     size_t label_index = 0;
-    cv::Vec3d rvec;
-    cv::Vec3d tvec;
-    cv::Matx66d JtJ; // rvec, tvec
+    ProbabalisticCube::PoseVector information_vector;
+    ProbabalisticCube::PoseMatrix information_matrix;
     float score = 0;
 };
 
@@ -42,6 +41,8 @@ void showBestLabelObservation(
     const std::vector<LabelObservation>& observations,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
     float label_width, const cv::Mat3b& img);
+
+ProbabalisticCube updateCube(const ProbabalisticCube& cube, const LabelObservation& observation);
 
 std::vector<LabelObservation> generateObservations(
     const Camera& calibrated_camera,

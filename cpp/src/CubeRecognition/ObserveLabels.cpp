@@ -15,7 +15,7 @@ const double inv_corner_sigma_squared = 1.0 / (corner_sigma * corner_sigma);
 
 // observation.JtJ has order: rotation, position
 // cube pose has order: position, rotation, side rotations
-const cv::Matx<double, 6, 12> observed_space_from_state_space =
+const cv::Matx<double, 6, 12> camera_space_from_state_space = // = J_observation_wrt_state
     *(cv::Matx<double, 6, 12>() <<
     0, 0, 0,  1, 0, 0,  0, 0, 0, 0, 0, 0,
     0, 0, 0,  0, 1, 0,  0, 0, 0, 0, 0, 0,
@@ -24,14 +24,11 @@ const cv::Matx<double, 6, 12> observed_space_from_state_space =
     0, 1, 0,  0, 0, 0,  0, 0, 0, 0, 0, 0,
     0, 0, 1,  0, 0, 0,  0, 0, 0, 0, 0, 0);
 
-Camera cameraFromObservation(
-    const Camera& calibrated_camera,
-    const LabelObservation& observation)
+ProbabalisticCube::PoseVector poseEstimateFromObservation(const LabelObservation& observation)
 {
-    Camera cam = calibrated_camera;
-    cam.rvec = observation.rvec;
-    cam.tvec = observation.tvec;
-    return cam;
+    // Add a small prior to be able to solve for the full cube pose.
+    const ProbabalisticCube::PoseMatrix prior = ProbabalisticCube::PoseMatrix::eye() * 1.0e-9;
+    return (observation.information_matrix + prior).inv() * observation.information_vector;
 }
 
 std::vector<cv::Point2f> projectCubeCorners(
@@ -39,13 +36,8 @@ std::vector<cv::Point2f> projectCubeCorners(
     const LabelObservation& observation,
     float label_width)
 {
-    ProbabalisticCube cube;
-    cube.pose_estimate[0] = observation.tvec[0];
-    cube.pose_estimate[1] = observation.tvec[1];
-    cube.pose_estimate[2] = observation.tvec[2];
-    cube.pose_estimate[3] = observation.rvec[0];
-    cube.pose_estimate[4] = observation.rvec[1];
-    cube.pose_estimate[5] = observation.rvec[2];
+    const ProbabalisticCube prior;
+    const ProbabalisticCube cube = updateCube(prior, observation);
     return projectCubeCorners(calibrated_camera, cube, label_width);
 }
 
@@ -54,40 +46,60 @@ void renderCoordinateSystem(
     const Camera& calibrated_camera,
     const LabelObservation& observation)
 {
-    const Camera cam = cameraFromObservation(calibrated_camera, observation);
-    renderCoordinateSystem(io_canvas, cam);
+    const ProbabalisticCube prior;
+    const ProbabalisticCube cube = updateCube(prior, observation);
+    renderCoordinateSystem(io_canvas, calibrated_camera, cube);
 }
 
-cv::Matx66d expandMatx33to66(const cv::Matx33d& mat33)
+ProbabalisticCube::PoseMatrix expandMatx33toPoseMatrix(const cv::Matx33d& mat33)
 {
-    return *(cv::Matx66d() <<
-        mat33(0,0), mat33(0,1), mat33(0,2), 0, 0, 0,
-        mat33(1,0), mat33(1,1), mat33(1,2), 0, 0, 0,
-        mat33(2,0), mat33(2,1), mat33(2,2), 0, 0, 0,
-        0, 0, 0, 1, 0, 0,
-        0, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 1);
+    using PoseMatrix = ProbabalisticCube::PoseMatrix;
+    PoseMatrix full_mat = PoseMatrix::eye();
+    cv::Mat(mat33).copyTo(cv::Mat(cv::Mat(full_mat), cv::Rect(3, 3, 3, 3)));
+    // FIXME(Rasmus): Shuffle face rotations
+    return full_mat;
 }
 
 LabelObservation adjustedObservation(
     const LabelObservation& observation,
     const cv::Matx33d& adjustment)
 {
+    using PoseMatrix = ProbabalisticCube::PoseMatrix;
+    using PoseVector = ProbabalisticCube::PoseVector;
     LabelObservation adj_obs = observation;
 
-    // Adjust rvec.
+    // Adjust pose.
+    const PoseVector observation_estimate = poseEstimateFromObservation(observation);
+    const cv::Vec3d observation_rvec(observation_estimate[3], observation_estimate[3], observation_estimate[3]);
     cv::Matx33d obs_space_from_world;
-    cv::Rodrigues(observation.rvec, obs_space_from_world);
+    cv::Rodrigues(observation_rvec, obs_space_from_world);
     const cv::Matx33d adjusted_obs_space_from_world = obs_space_from_world * adjustment;
-    cv::Rodrigues(adjusted_obs_space_from_world, adj_obs.rvec);
+    cv::Vec3d adjusted_obs_rvec;
+    cv::Rodrigues(adjusted_obs_space_from_world, adjusted_obs_rvec);
+
+    const cv::Matx<double, 6,3> urfdlb_from_xyz = *(cv::Matx<double, 6,3>() <<
+        0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1,
+        0, -1, 0,
+        1, 0, 0,
+        0, 0, -1);
+
+    const cv::Matx66d side_rotations_adjustment =
+        urfdlb_from_xyz * adjustment * urfdlb_from_xyz.t();
+    const cv::Vec6d observation_side_rotations = cv::Mat1d(cv::Mat1d(observation_estimate), cv::Rect(0, 6, 1, 6));
+    const cv::Vec6d adjusted_side_rotations = side_rotations_adjustment * observation_side_rotations;
+
+    //(J69_side_rotations_wrt_rmat.reshape<18,3>() * adjustment).reshape<6,9>() * J96_adj_rmat_wrt_adj_side_rotations;
 
     // FIXME(Rasmus): This goes wrong sometimes. Could be related to singularities in rvec form.
-    // Adjust JtJ
+    // Adjust information matrix
     const cv::Matx<double, 3, 9> J39_rvec_wrt_rmat = rodriguesJacobian(obs_space_from_world);
-    const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec = rodriguesJacobian(adj_obs.rvec);
-    const cv::Matx66d A = expandMatx33to66(
-        (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() * J93_adj_rmat_wrt_adj_rvec);
-    adj_obs.JtJ = A.t() * observation.JtJ * A;
+    const cv::Matx<double, 9, 3> J93_adj_rmat_wrt_adj_rvec = rodriguesJacobian(adjusted_obs_rvec);
+    const PoseMatrix A = expandMatx33toPoseMatrix(
+        (J39_rvec_wrt_rmat.reshape<9,3>() * adjustment).reshape<3,9>() *
+        J93_adj_rmat_wrt_adj_rvec);
+    adj_obs.information_matrix = A.t() * observation.information_matrix * A;
 
     return adj_obs;
 }
@@ -100,8 +112,10 @@ LabelObservation adjustedObservation(
     cv::Matx33d target_from_world;
     cv::Rodrigues(target_rvec, target_from_world);
 
+    const ProbabalisticCube::PoseVector pose = poseEstimateFromObservation(observation);
+    const cv::Vec3d observation_rvec(pose[3], pose[3], pose[3]);
     cv::Matx33d obs_space_from_world;
-    cv::Rodrigues(observation.rvec, obs_space_from_world);
+    cv::Rodrigues(observation_rvec, obs_space_from_world);
 
     //                            target_from_world ~= obs_space_from_world * adjustment
     // obs_space_from_world.t() * target_from_world ~=                        adjustment
@@ -161,6 +175,85 @@ float scorePredictedCorners(const std::vector<cv::Point2f>& predicted_corners,
     return score;
 }
 
+void adjustRotationVectorAndPoints(cv::Vec3d& io_rvec, std::vector<cv::Point3f>& io_points)
+{
+    cv::Matx33d rmat;
+    cv::Rodrigues(io_rvec, rmat);
+    const cv::Matx33d adjustment = closest90DegreeRotation(rmat);
+    rmat = rmat * adjustment.t();
+    cv::Rodrigues(rmat, io_rvec);
+    for (auto& p : io_points)
+    {
+        p = cv::Matx33f(adjustment) * p;
+    }
+}
+
+cv::Matx66d estimatePoseCertainty(
+    const Camera& calibrated_camera,
+    const cv::Vec3d& rvec,
+    const cv::Vec3d& tvec,
+    const std::vector<cv::Point3f>& points)
+{
+    cv::Mat J;
+    std::vector<cv::Point2f> p; // dummy output vector
+    cv::projectPoints(points, rvec, tvec,
+        calibrated_camera.camera_matrix, calibrated_camera.dist_coeffs, p, J);
+    cv::Matx66d JtJ = cv::Mat(J.t() * J, cv::Rect(0, 0, 6, 6));
+    // covariance = JtJ.inv() * rmse^2
+    // covariance.inv() = (JtJ.inv() * rmse^2).inv() = JtJ * (rmse^2).inv()
+    JtJ *= inv_corner_sigma_squared;
+    return JtJ;
+}
+
+cv::Point3f pointsAverage(const std::vector<cv::Point3f>& points)
+{
+    assert(!points.empty());
+    cv::Point3d sum(0, 0, 0);
+    for (const auto& p : points)
+    {
+        sum += cv::Point3d(p);
+    }
+    return sum / double(points.size());
+}
+
+cv::Matx<double, 6, 12> getCubieSpaceFromStateSpaceMatrix(const cv::Point3f& label_center)
+{
+    cv::Matx<double, 6, 12> cubie_space_from_state_space = camera_space_from_state_space;
+    // U  R  F  D' L'  B'
+    // 6  7  8  9  10  11
+    if (label_center.y < -0.5)
+    {
+        // Affected by U
+        cubie_space_from_state_space(1, 6) = 1.0;
+    }
+    if (label_center.x > 0.5)
+    {
+        // Affected by R
+        cubie_space_from_state_space(0, 7) = -1.0;
+    }
+    if (label_center.z < -0.5)
+    {
+        // Affected by F
+        cubie_space_from_state_space(2, 8) = 1.0;
+    }
+    if (label_center.y > 0.5)
+    {
+        // Affected by D
+        cubie_space_from_state_space(1, 9) = 1.0;
+    }
+    if (label_center.x < -0.5)
+    {
+        // Affected by L
+        cubie_space_from_state_space(0, 10) = -1.0;
+    }
+    if (label_center.z > 0.5)
+    {
+        // Affected by B
+        cubie_space_from_state_space(2, 11) = 1.0;
+    }
+    return cubie_space_from_state_space;
+}
+
 std::vector<LabelObservation> generateObservationsForLabel(
     const Camera& calibrated_camera,
     const size_t label_index,
@@ -168,7 +261,7 @@ std::vector<LabelObservation> generateObservationsForLabel(
     const float label_width)
 {
     const float half_width = label_width * 0.5f;
-    const std::vector<std::vector<cv::Point3f>> candidate_points3d = [&half_width]()
+    std::vector<std::vector<cv::Point3f>> candidate_points3d = [&half_width]()
     {
         std::vector<std::vector<cv::Point3f>> point_groups;
         point_groups.reserve(9);
@@ -190,29 +283,38 @@ std::vector<LabelObservation> generateObservationsForLabel(
 
     std::vector<LabelObservation> observation_candidates;
     observation_candidates.reserve(candidate_points3d.size());
-    for (const auto& points3d : candidate_points3d)
+    for (auto& points3d : candidate_points3d)
     {
         LabelObservation observation;
         observation.label_index = label_index;
+        cv::Vec3d rvec;
+        cv::Vec3d tvec;
         cv::solvePnP(points3d, detected_corners[label_index],
             calibrated_camera.camera_matrix, calibrated_camera.dist_coeffs,
-            observation.rvec, observation.tvec);
+            rvec, tvec);
+
+        // Adjust rotation vector and points to minimize rotation vector.
+        adjustRotationVectorAndPoints(rvec, points3d);
 
         // Compute certainty of rotation and translation
-        cv::Mat J;
-        std::vector<cv::Point2f> p; // dummy output vector
-        cv::projectPoints(points3d, observation.rvec, observation.tvec,
-            calibrated_camera.camera_matrix, calibrated_camera.dist_coeffs, p, J);
-        observation.JtJ = cv::Mat(J.t() * J, cv::Rect(0, 0, 6, 6));
-        // covariance = JtJ.inv() * rmse^2
-        // covariance.inv() = (JtJ.inv() * rmse^2).inv() = JtJ * (rmse^2).inv()
-        observation.JtJ *= inv_corner_sigma_squared;
+        const cv::Matx66d JtJ = estimatePoseCertainty(calibrated_camera, rvec, tvec, points3d);
+
+        const cv::Point3f label_center = pointsAverage(points3d);
+        const cv::Matx<double, 6, 12> cubie_space_from_state_space =
+            getCubieSpaceFromStateSpaceMatrix(label_center);
+
+        observation.information_matrix =
+            cubie_space_from_state_space.t() * JtJ * cubie_space_from_state_space;
+        observation.information_vector =
+            cubie_space_from_state_space.t() * JtJ * cv::Vec6d(
+            rvec[0], rvec[1], rvec[2],
+            tvec[0], tvec[1], tvec[2]);
 
         const std::vector<cv::Point2f> predicted_corners =
             projectCubeCorners(calibrated_camera, observation, label_width);
         observation.score = scorePredictedCorners(predicted_corners, detected_corners);
 
-        observation_candidates.push_back(adjustedObservation(observation, cv::Vec3d(0, 0, 0)));
+        observation_candidates.push_back(observation);
     }
     return observation_candidates;
 }
@@ -306,6 +408,12 @@ void projectOuterCubeCornersWithUncertainties(
     std::vector<cv::Point2f>& out_points,
     std::vector<cv::Matx22f>& out_points_covariances)
 {
+    using PoseVector = ProbabalisticCube::PoseVector;
+    using PoseMatrix = ProbabalisticCube::PoseMatrix;
+    const PoseVector pose_estimate = poseEstimateFromObservation(observation);
+    const cv::Mat1d observation_covariance =
+        cv::Mat1d(observation.information_matrix + PoseMatrix::eye() * 1.0e-6).inv();
+
     const std::vector<cv::Point3f> points_in_3D = {
         cv::Point3f(-1.5, -1.5, -1.5),
         cv::Point3f(-1.5, -1.5, 1.5),
@@ -318,21 +426,26 @@ void projectOuterCubeCornersWithUncertainties(
     cv::Mat1d jacobian; // 2Nx(10+numDistCoeffs)
     cv::projectPoints(
         points_in_3D,
-        observation.rvec,
-        observation.tvec,
+        cv::Vec3d(pose_estimate[3], pose_estimate[4], pose_estimate[5]),
+        cv::Vec3d(pose_estimate[0], pose_estimate[1], pose_estimate[2]),
         calibrated_camera.camera_matrix,
         calibrated_camera.dist_coeffs,
         out_points,
         jacobian);
-    // delta_in_2D ~= jacobian * delta_cam_and_points_in_3D
-    const cv::Mat1d jacobian_extrinsics(jacobian, cv::Rect(0, 0, 6, jacobian.rows)); // 2Nx6
-    const cv::Mat1d covar_points2d =
-        jacobian_extrinsics * cv::Mat1d(observation.JtJ).inv() * jacobian_extrinsics.t(); // 2Nx2N
 
     out_points_covariances.resize(out_points.size());
     for (size_t i = 0; i < out_points.size(); ++i)
     {
-        out_points_covariances[i] = cv::Mat1f(covar_points2d, cv::Rect(2*i, 2*i, 2, 2));
+        const cv::Matx<double, 6, 12> cubie_space_from_state_space =
+            getCubieSpaceFromStateSpaceMatrix(points_in_3D[i]);
+        const cv::Mat1d jacobian_extrinsics(jacobian, cv::Rect(0, 2*i, 6, 2)); // 2Nx6
+        const cv::Mat1d covar_points2d =
+            jacobian_extrinsics *
+            cv::Mat1d(cubie_space_from_state_space) *
+            observation_covariance *
+            cv::Mat1d(cubie_space_from_state_space).t() *
+            jacobian_extrinsics.t(); // 2Nx2N
+        out_points_covariances[i] = covar_points2d;
     }
 }
 
@@ -375,6 +488,7 @@ void renderObservationUncertainty(
 
 const LabelObservation& findBestObservation(const std::vector<LabelObservation>& observations)
 {
+    assert(!observations.empty());
     const LabelObservation& observation =
         *std::max_element(observations.begin(), observations.end(),
         [](const LabelObservation& a, const LabelObservation& b)
@@ -437,7 +551,7 @@ void showBestLabelObservation(
     float label_width, const cv::Mat3b& img)
 {
     cv::Mat3b canvas1 = img * 0.25f;
-    cv::Mat3b canvas2 = img * 0.25f;
+//    cv::Mat3b canvas2 = img * 0.25f;
     if (!observations.empty())
     {
         const LabelObservation& observation = findBestObservation(observations);
@@ -445,14 +559,16 @@ void showBestLabelObservation(
             detected_corners.size(), observation.label_index);
         renderLabelObservation(canvas1, calibrated_camera, observation, detected_corners, label_width);
 
-        renderLabelObservation(canvas2, calibrated_camera,
-            adjustedObservation(observation, cv::Vec3d(0, 0, 0)), detected_corners, label_width);
+//        renderLabelObservation(canvas2, calibrated_camera,
+//            adjustedObservation(observation, cv::Vec3d(0, 0, 0)), detected_corners, label_width);
     }
     cv::imshow("Best label observation", canvas1);
-    cv::imshow("Adjusted label observation", canvas2);
+//    cv::imshow("Adjusted label observation", canvas2);
 }
 
-double logNormPdf(const cv::Vec6d delta, const cv::Matx66d& JtJ)
+double logNormPdf(
+    const ProbabalisticCube::PoseVector& delta,
+    const ProbabalisticCube::PoseMatrix& JtJ)
 {
     const double tau = 2.0 * M_PI;
     return -0.5 * ((delta.t() * JtJ * delta)[0] + std::log(cv::determinant(tau * JtJ.inv())));
@@ -465,44 +581,26 @@ ProbabalisticCube updateCube(const ProbabalisticCube& cube, const LabelObservati
     const PoseMatrix cube_pose_information_matrix = cube.pose_covariance.inv();
     const PoseVector cube_pose_information_vector = cube_pose_information_matrix * cube.pose_estimate;
 
-    const PoseMatrix observation_information_matrix =
-        observed_space_from_state_space.t() * observation.JtJ * observed_space_from_state_space;
-    const PoseVector observation_information_vector =
-        observed_space_from_state_space.t() * observation.JtJ * cv::Vec6d(
-        observation.rvec[0], observation.rvec[1], observation.rvec[2],
-        observation.tvec[0], observation.tvec[1], observation.tvec[2]);
-
     // Add information from observation to cube pose.
     PoseMatrix updated_cube_pose_information_matrix =
-        cube_pose_information_matrix + observation_information_matrix;
+        cube_pose_information_matrix + observation.information_matrix;
     PoseVector updated_cube_pose_information_vector =
-        cube_pose_information_vector + observation_information_vector;
+        cube_pose_information_vector + observation.information_vector;
 
+    assert(std::isfinite(cube.log_likelihood));
     ProbabalisticCube updated_cube = cube;
     updated_cube.pose_covariance = updated_cube_pose_information_matrix.inv();
     updated_cube.pose_estimate = updated_cube.pose_covariance * updated_cube_pose_information_vector;
 
     // FIXME(Rasmus): Make proper delta considering the different coordinate systems.
-    const cv::Vec6d delta_in_observation(
-        cube.pose_estimate[3] - observation.rvec[0],
-        cube.pose_estimate[4] - observation.rvec[1],
-        cube.pose_estimate[5] - observation.rvec[2],
-        cube.pose_estimate[0] - observation.tvec[0],
-        cube.pose_estimate[1] - observation.tvec[1],
-        cube.pose_estimate[2] - observation.tvec[2]);
+    const ProbabalisticCube::PoseVector delta =
+        cube.pose_estimate - poseEstimateFromObservation(observation);
 
-    cv::Matx66d cube_JtJ;
-    for (int pose_i = 0; pose_i < 6; ++pose_i)
-    {
-        int obs_i = (pose_i + 3) % 6;
-        for (int pose_j = 0; pose_j < 6; ++pose_j)
-        {
-            int obs_j = (pose_j + 3) % 6;
-            cube_JtJ(obs_i, obs_j) = cube_pose_information_matrix(pose_i, pose_j);
-        }
-    }
-    updated_cube.log_likelihood += logNormPdf(delta_in_observation, observation.JtJ);
-    updated_cube.log_likelihood += logNormPdf(delta_in_observation, cube_JtJ);
+    // TODO(Rasmus): Investigate values of pdfs.
+    assert(std::isfinite(updated_cube.log_likelihood));
+    updated_cube.log_likelihood += logNormPdf(delta, cube.pose_covariance.inv());
+    assert(std::isfinite(updated_cube.log_likelihood));
+    updated_cube.log_likelihood += observation.score;
     return updated_cube;
 }
 
@@ -554,7 +652,8 @@ std::vector<LabelObservation> mergeObservationsPairwise(
         for (size_t j = i + 1; j < observations.size(); ++j)
         {
             const LabelObservation& a = observations[i];
-            const LabelObservation b = adjustedObservation(observations[j], a.rvec);
+            const LabelObservation& b = observations[j];
+            //const LabelObservation b = adjustedObservation(observations[j], a.rvec);
             if (a.label_index == b.label_index)
             {
                 continue;
@@ -566,20 +665,21 @@ std::vector<LabelObservation> mergeObservationsPairwise(
             // 2. b.label_index > 0 because b.label_index > a.label_index.
             c.label_index = b.label_index * detected_corners.size() + a.label_index;
 
-            c.JtJ = a.JtJ + b.JtJ;
-            const cv::Vec6d a_vec(a.rvec[0], a.rvec[1], a.rvec[2], a.tvec[0], a.tvec[1], a.tvec[2]);
-            const cv::Vec6d b_vec(b.rvec[0], b.rvec[1], b.rvec[2], b.tvec[0], b.tvec[1], b.tvec[2]);
-            const cv::Vec6d c_vec = c.JtJ.inv() * (a.JtJ * a_vec + b.JtJ * b_vec);
-            c.rvec << c_vec[0], c_vec[1], c_vec[2];
-            c.tvec << c_vec[3], c_vec[4], c_vec[5];
+            c.information_matrix = a.information_matrix + b.information_matrix;
+            c.information_vector = a.information_vector + b.information_vector;
 
             // Compute mahalanobis distance of c_vec in distribution of a and b.
             // Reject if c_vec is too unlikely.
             // Mahalanobis distance is symmetric for c_vec in a and b
             // because c_vec is the optimal combined estimate.
+
+            // FIXME(Rasmus): Update max_mahalanobis_distance!
             const double max_mahalanobis_distance = 5.35; // Chi-square k=6, p=0.5
             //const double max_mahalanobis_distance = 12.59; // Chi-square k=6, p=0.05
-            const double a_mahalanobis = cv::Mahalanobis(c_vec, a_vec, a.JtJ);
+            const double a_mahalanobis = cv::Mahalanobis(
+                poseEstimateFromObservation(c),
+                poseEstimateFromObservation(a),
+                a.information_matrix);
             if (a_mahalanobis > max_mahalanobis_distance)
             {
                 continue;
@@ -640,7 +740,7 @@ std::vector<ProbabalisticCube> update(
                 cube.pose_estimate[4],
                 cube.pose_estimate[5]);
             const ProbabalisticCube updated_cube =
-                updateCube(cube, adjustedObservation(observation, target_rvec));
+                updateCube(cube, observation);
             updated_cube_hypotheses.push_back(updated_cube);
         }
     }

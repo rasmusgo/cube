@@ -9,6 +9,11 @@
 
 #include "SolveCamera.hpp"
 
+const cv::Matx33d urf_from_xyz(
+    0, 1, 0,
+    -1, 0, 0,
+    0, 0, 1);
+
 static const double angle_increment = 22.5 / 180 * M_PI;
 static const ProbabalisticCube::PoseMatrix pose_prediction_uncertainty =
     ProbabalisticCube::PoseMatrix::diag(ProbabalisticCube::PoseMatrix::diag_type(
@@ -84,16 +89,12 @@ void propagateContinousRotationsToDiscrete(ProbabalisticCube& io_cube)
         cv::Vec3d delta_rvec(0, 0, 0);
         delta_rvec[max_rotation_i] = rvec[max_rotation_i] > 0 ? M_PI_2 : -M_PI_2;
 
-        // Subtract from continous part.
+        // Subtract from continuous part.
         rvec = composeRotation(rvec, -delta_rvec);
 
         // TODO(Rasmus): Update covariance matrix to handle side rotations (face moves) properly.
 
         // Add to discrete part.
-        const cv::Matx33d urf_from_xyz(
-            0, 1, 0,
-            -1, 0, 0,
-            0, 0, 1);
         cv::Vec3d delta_urf = urf_from_xyz * delta_rvec / M_PI_2;
         for (int i = 0; i < 3; ++i)
         {
@@ -173,7 +174,7 @@ std::vector<ProbabalisticCube> generatePredictions(const ProbabalisticCube& pare
     // Likelihood of not moving any side is considered 50% (as likely as all moves combined).
     children.back().log_likelihood = std::log(children.size() - 1);
 
-    // Propagate rotations from continous part of representation to discrete part.
+    // Propagate rotations from continuous part of representation to discrete part.
     for (ProbabalisticCube& child : children)
     {
         propagateContinousRotationsToDiscrete(child);

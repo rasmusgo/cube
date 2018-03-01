@@ -141,7 +141,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         }
         cv::imshow("Superimposed adjustments", canvas);
 
-        //showBestLabelObservation(calibrated_camera, observations, detected_corners, label_width, img);
+        showBestLabelObservation(calibrated_camera, observations, detected_corners, label_width, img);
 
         stopTimer();
         fflush(stdout);
