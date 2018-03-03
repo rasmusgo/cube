@@ -586,6 +586,21 @@ double logNormPdf(
     return -0.5 * ((delta.t() * JtJ * delta)[0] + std::log(cv::determinant(tau * JtJ.inv())));
 }
 
+// FIXME(Rasmus): Update max_mahalanobis_distance!
+const double max_mahalanobis_distance = 5.35; // Chi-square k=6, p=0.5
+//const double max_mahalanobis_distance = 12.59; // Chi-square k=6, p=0.05
+
+double mahalanobisDistance(
+    const LabelObservation& a,
+    const LabelObservation& b,
+    const ProbabalisticCube::PoseMatrix& icov)
+{
+    return cv::Mahalanobis(
+        poseEstimateFromObservation(a),
+        poseEstimateFromObservation(b),
+        icov);
+}
+
 ProbabalisticCube updateCube(const ProbabalisticCube& cube, const LabelObservation& observation)
 {
     using PoseMatrix = ProbabalisticCube::PoseMatrix;
@@ -683,13 +698,7 @@ std::vector<LabelObservation> mergeObservationsPairwise(
             // Mahalanobis distance is symmetric for c_vec in a and b
             // because c_vec is the optimal combined estimate.
 
-            // FIXME(Rasmus): Update max_mahalanobis_distance!
-            const double max_mahalanobis_distance = 5.35; // Chi-square k=6, p=0.5
-            //const double max_mahalanobis_distance = 12.59; // Chi-square k=6, p=0.05
-            const double a_mahalanobis = cv::Mahalanobis(
-                poseEstimateFromObservation(c),
-                poseEstimateFromObservation(a),
-                a.information_matrix);
+            const double a_mahalanobis = mahalanobisDistance(c, a, a.information_matrix);
             if (a_mahalanobis > max_mahalanobis_distance)
             {
                 continue;
