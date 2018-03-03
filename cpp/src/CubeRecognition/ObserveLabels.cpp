@@ -499,6 +499,18 @@ const LabelObservation& findBestObservation(const std::vector<LabelObservation>&
     return observation;
 }
 
+// Encode multiple label indices based on:
+// 1. A normal label_index is less than num_labels
+// 2. At least one of the labels is not 0.
+// The labels indices are encoded as the digits of a number with num_labels as the base.
+// (instead of base 2 or base 10).
+size_t packLabelIndices(size_t label_a, size_t label_b, size_t num_labels)
+{
+    return (label_a > label_b) ?
+        label_a * num_labels + label_b :
+        label_b * num_labels + label_a;
+}
+
 std::vector<size_t> unpackLabelIndices(size_t label_index, size_t num_labels)
 {
     if (label_index < num_labels)
@@ -646,6 +658,7 @@ std::vector<LabelObservation> mergeObservationsPairwise(
     const std::vector<LabelObservation>& observations,
     float label_width)
 {
+    const size_t num_labels = detected_corners.size();
     std::vector<LabelObservation> merged_observations;
     for (size_t i = 0; i < observations.size(); ++i)
     {
@@ -660,10 +673,7 @@ std::vector<LabelObservation> mergeObservationsPairwise(
             }
 
             LabelObservation c;
-            // Encode multiple label indices based on:
-            // 1. A normal label_index is less than detected_corners.size()
-            // 2. b.label_index > 0 because b.label_index > a.label_index.
-            c.label_index = b.label_index * detected_corners.size() + a.label_index;
+            c.label_index = packLabelIndices(a.label_index, b.label_index, num_labels);
 
             c.information_matrix = a.information_matrix + b.information_matrix;
             c.information_vector = a.information_vector + b.information_vector;
