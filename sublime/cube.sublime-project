@@ -4,8 +4,9 @@
         {
             "path": "..",
             "folder_exclude_patterns": [
-                "build",
+                "*.trace",
                 "bin",
+                "build",
                 "lib",
                 "thirdparty"
             ]
