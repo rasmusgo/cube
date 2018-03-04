@@ -253,18 +253,19 @@ void prune(std::vector<ProbabalisticCube>& cubes, size_t max_num)
                 exp(a.log_likelihood - max_log_likelihood) +
                 exp(b.log_likelihood - max_log_likelihood));
             // Update covariance by covariance intersection.
+            // Minimize trace of covariance matrix by interpolation of information matrices.
             const ProbabalisticCube::PoseMatrix a_information_matrix = a.pose_covariance.inv();
             const ProbabalisticCube::PoseMatrix b_information_matrix = b.pose_covariance.inv();
             double best_t = 1.0;
-            double best_trace = cv::trace(b_information_matrix);
-            const size_t num_tests = 100;
+            double best_trace = cv::trace(b.pose_covariance);
+            const size_t num_tests = 10;
             for (size_t i = 0; i < num_tests; ++i)
             {
                 const double t = double(i) / double(num_tests);
                 const ProbabalisticCube::PoseMatrix interpolated_information_matrix =
                     a_information_matrix * (1.0 - t) + b_information_matrix * t;
-                const double trace = cv::trace(interpolated_information_matrix);
-                if (trace > best_trace)
+                const double trace = cv::trace(interpolated_information_matrix.inv());
+                if (trace < best_trace)
                 {
                     best_t = t;
                     best_trace = trace;
