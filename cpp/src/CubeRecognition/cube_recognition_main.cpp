@@ -273,12 +273,12 @@ void showMostLikelyCube(
         {
             const double value = cube.pose_covariance(i, j);
             const cv::Scalar red(0, 0, 255);
-            const cv::Scalar green(0, 255, 0);
+            const cv::Scalar gray(96, 96, 96);
             const cv::Scalar blue(255, 0, 0);
             const double t = std::sqrt(std::abs(value)) * 0.1;
             const cv::Scalar contrast_color = value < 0 ? blue : red;
             // TODO(Rasmus): Interpolate in linear space instead of sRGB.
-            const cv::Scalar color = green + (contrast_color - green) * t;
+            const cv::Scalar color = gray + (contrast_color - gray) * t;
             cv::rectangle(canvas, cv::Rect(j*10, i*10, 10, 10), color, cv::FILLED);
         }
     }
