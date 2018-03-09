@@ -580,10 +580,10 @@ void showBestLabelObservation(
 
 double logNormPdf(
     const ProbabalisticCube::PoseVector& delta,
-    const ProbabalisticCube::PoseMatrix& JtJ)
+    const ProbabalisticCube::PoseMatrix& icov)
 {
     const double tau = 2.0 * M_PI;
-    return -0.5 * ((delta.t() * JtJ * delta)[0] + std::log(cv::determinant(tau * JtJ.inv())));
+    return -0.5 * ((delta.t() * icov * delta)[0] + std::log(std::abs(tau / cv::determinant(icov))));
 }
 
 // FIXME(Rasmus): Update max_mahalanobis_distance!
@@ -598,6 +598,17 @@ double mahalanobisDistance(
     return cv::Mahalanobis(
         poseEstimateFromObservation(a),
         poseEstimateFromObservation(b),
+        icov);
+}
+
+double mahalanobisDistance(
+    const ProbabalisticCube& a,
+    const ProbabalisticCube& b,
+    const ProbabalisticCube::PoseMatrix& icov)
+{
+    return cv::Mahalanobis(
+        a.pose_estimate,
+        b.pose_estimate,
         icov);
 }
 
@@ -624,10 +635,13 @@ ProbabalisticCube updateCube(const ProbabalisticCube& cube, const LabelObservati
         cube.pose_estimate - poseEstimateFromObservation(observation);
 
     // TODO(Rasmus): Investigate values of pdfs.
+    //updated_cube.log_likelihood += logNormPdf(delta, observation.information_matrix);
     assert(std::isfinite(updated_cube.log_likelihood));
-    updated_cube.log_likelihood += logNormPdf(delta, cube.pose_covariance.inv());
+    updated_cube.log_likelihood += logNormPdf(delta, cube_pose_information_matrix);
     assert(std::isfinite(updated_cube.log_likelihood));
     updated_cube.log_likelihood += observation.score;
+//    updated_cube.log_likelihood -= cv::trace(updated_cube.pose_covariance);
+//    updated_cube.log_likelihood -= cv::determinant(updated_cube.pose_covariance);
     return updated_cube;
 }
 
@@ -722,11 +736,100 @@ std::vector<LabelObservation> mergeObservationsPairwise(
     return merged_observations;
 }
 
+void pickObservationsForLabel(
+    std::vector<LabelObservation>& io_merged_observations,
+    size_t label_index,
+    const LabelObservation& accumulated_observation,
+    const std::vector<std::vector<LabelObservation>>& observations_by_label)
+{
+    const size_t num_labels = observations_by_label.size();
+
+    if (label_index >= num_labels)
+    {
+        return;
+    }
+
+    const auto& a = accumulated_observation;
+    for (const auto& b : observations_by_label[label_index])
+    {
+        LabelObservation c;
+        c.label_index = b.label_index * num_labels + a.label_index;
+        c.information_matrix = a.information_matrix + b.information_matrix;
+        c.information_vector = a.information_vector + b.information_vector;
+
+        const double a_mahalanobis = mahalanobisDistance(a, c, a.information_matrix);
+        if (a_mahalanobis > max_mahalanobis_distance)
+        {
+            continue;
+        }
+
+        io_merged_observations.push_back(c);
+        pickObservationsForLabel(io_merged_observations, label_index + 1, c, observations_by_label);
+    }
+
+    // This label could be a a false detection, try without it as well.
+    pickObservationsForLabel(io_merged_observations, label_index + 1, accumulated_observation, observations_by_label);
+}
+
+std::vector<LabelObservation> combineObservationsRecursively(
+    const Camera& calibrated_camera,
+    const std::vector<std::vector<cv::Point2f>>& detected_corners,
+    const std::vector<LabelObservation>& observations,
+    float label_width)
+{
+    // Group observations by label.
+    const size_t num_labels = detected_corners.size();
+    std::vector<std::vector<LabelObservation>> observations_by_label(num_labels);
+    for (const auto& observation : observations)
+    {
+        observations_by_label[observation.label_index].push_back(observation);
+    }
+
+    // Sort each group best first.
+    for (auto& group : observations_by_label)
+    {
+        std::sort(group.begin(), group.end(),
+            [](const LabelObservation& a, const LabelObservation& b)
+        {
+            return b.score < a.score;
+        });
+    }
+
+    // Pick at most one observation from each group.
+    LabelObservation empty_observation;
+    empty_observation.information_matrix = ProbabalisticCube::PoseMatrix::eye() * 1.0e-9;
+    std::vector<LabelObservation> merged_observations;
+    pickObservationsForLabel(merged_observations, 0, empty_observation, observations_by_label);
+
+    for (auto& observation : merged_observations)
+    {
+        const std::vector<cv::Point2f> predicted_corners =
+            projectCubeCorners(calibrated_camera, observation, label_width);
+        observation.score = scorePredictedCorners(predicted_corners, detected_corners);
+    }
+
+    return merged_observations;
+}
+
 std::vector<ProbabalisticCube> update(
     const std::vector<ProbabalisticCube>& cube_hypotheses,
     const std::vector<std::vector<cv::Point2f>>& detected_corners,
     const Camera& calibrated_camera, float label_width, const cv::Mat3b& img)
 {
+    /*
+    std::vector<ProbabalisticCube> updated_cube_hypotheses;
+    for (const auto& cube : cube_hypotheses)
+    {
+        const std::vector<cv::Point2f> predicted_corners =
+            projectCubeCorners(calibrated_camera, cube, label_width);
+        const auto score = scorePredictedCorners(predicted_corners, detected_corners);
+        ProbabalisticCube updated_cube = cube;
+        updated_cube.log_likelihood += score;
+        updated_cube_hypotheses.push_back(updated_cube);
+    }
+    normalizeLikelihood(updated_cube_hypotheses);
+    return updated_cube_hypotheses;
+    /*/
     const std::vector<LabelObservation> observations =
         generateObservations(calibrated_camera, detected_corners, label_width);
 
@@ -736,34 +839,65 @@ std::vector<ProbabalisticCube> update(
         return cube_hypotheses;
     }
 
+    //*
+    const std::vector<LabelObservation> combined_observations =
+        combineObservationsRecursively(calibrated_camera, detected_corners, observations, label_width);
+
+    /*/
     const std::vector<LabelObservation> merged_observations =
         mergeObservationsPairwise(calibrated_camera, detected_corners, observations, label_width);
 
-    printf("Generated %lu observation pairs.\n", merged_observations.size());
-
     std::vector<LabelObservation> combined_observations = observations;
-    combined_observations.insert(combined_observations.end(),
+        combined_observations.insert(combined_observations.end(),
         merged_observations.begin(), merged_observations.end());
+    //*/
+
+    // const std::vector<LabelObservation> merged_observations =
+    //     mergeObservationsPairwise(calibrated_camera, detected_corners, observations, label_width);
+
+    printf("Generated %lu combined observations.\n", combined_observations.size());
 
     showObservationContributions(calibrated_camera, combined_observations, label_width, img);
     showBestLabelObservation(calibrated_camera, combined_observations, detected_corners, label_width, img);
 
-    // TODO(Rasmus): Add the hypotheses that all observation candidates are outliers.
     std::vector<ProbabalisticCube> updated_cube_hypotheses;
     for (const auto& cube : cube_hypotheses)
     {
+        /*
+        // Pick one observation per cube hypothesis.
+        // Minimize trace of covariance matrix à la covariance intersection.
+        double best_trace = std::numeric_limits<double>::infinity();
+        ProbabalisticCube best_updated_cube;
+
+        for (size_t i = 0; i < combined_observations.size(); ++i)
+        {
+            const auto& observation = combined_observations[i];
+            const ProbabalisticCube updated_cube = updateCube(cube, observation);
+            const ProbabalisticCube::PoseMatrix icov = cube.pose_covariance.inv();
+            if (mahalanobisDistance(updated_cube, cube, icov) < max_mahalanobis_distance)
+            {
+                const double trace = cv::trace(updated_cube.pose_covariance);
+                if (trace < best_trace)
+                {
+                    best_trace = trace;
+                    best_updated_cube = updated_cube;
+                }
+            }
+        }
+
+        if (std::isfinite(best_trace))
+        {
+            updated_cube_hypotheses.push_back(best_updated_cube);
+        }
+        /*/
         for (const auto& observation : combined_observations)
         {
-            const cv::Vec3d target_rvec(
-                cube.pose_estimate[3],
-                cube.pose_estimate[4],
-                cube.pose_estimate[5]);
-            const ProbabalisticCube updated_cube =
-                updateCube(cube, observation);
-            updated_cube_hypotheses.push_back(updated_cube);
+            updated_cube_hypotheses.push_back(updateCube(cube, observation));
         }
+        //*/
     }
     normalizeLikelihood(updated_cube_hypotheses);
 
     return updated_cube_hypotheses;
+    //*/
 }

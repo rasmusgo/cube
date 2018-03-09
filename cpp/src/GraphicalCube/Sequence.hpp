@@ -11,7 +11,7 @@ class Sequence {
 public:
     struct Animation {
         Animation() :
-            time(0.025f)
+            time(0.1f)
         {
             for (int i = 0; i < 3; ++i)
                 for (int j = 0; j < 3; ++j) {

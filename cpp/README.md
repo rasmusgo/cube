@@ -35,3 +35,16 @@ Spacebar scrambles the cube. Enter solves it (same solver as SimpleSolver).
 | V   | wL     |
 | U   | wR     |
 | M   | wR'    |
+
+# CubeRecognition
+
+Find the state of a scrambled (or solved) cube from two images.
+
+## Video
+
+Track the cube over time from a video sequence to analyze the moves being made.
+
+The cube state is tracked using a particle filter where each particle is a Kalman filter.
+The state representation has a discrete and a continuous part.
+The discrete part is the permutation of the cube.
+The continuous part is the position and orientation of the cube relative to the camera and rotations of the sides (less than quarter turns).

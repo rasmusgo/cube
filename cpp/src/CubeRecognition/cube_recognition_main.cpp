@@ -15,7 +15,7 @@
 #include "SolveCamera.hpp"
 #include "Timer.hpp"
 
-const size_t kMaxNumHypotheses = 19;
+const size_t kMaxNumHypotheses = 19; //100;
 const std::vector<std::string> side_names = {"F", "R", "U", "L", "B", "D", "*"};
 
 void setupWindows(const cv::Size& img_size)
@@ -275,7 +275,7 @@ void showMostLikelyCube(
             const cv::Scalar red(0, 0, 255);
             const cv::Scalar gray(96, 96, 96);
             const cv::Scalar blue(255, 0, 0);
-            const double t = std::sqrt(std::abs(value)) * 0.1;
+            const double t = std::sqrt(std::abs(value));
             const cv::Scalar contrast_color = value < 0 ? blue : red;
             // TODO(Rasmus): Interpolate in linear space instead of sRGB.
             const cv::Scalar color = gray + (contrast_color - gray) * t;
@@ -395,10 +395,12 @@ void showLabelColors(
 
 int main()
 {
-    //recordVideoFrames()
+    //recordVideoFrames();
 
     cv::Mat3b img_top    = cv::imread("photos/IMG_6216.JPG", cv::IMREAD_COLOR);
     cv::Mat3b img_bottom = cv::imread("photos/IMG_6217.JPG", cv::IMREAD_COLOR);
+//    cv::Mat3b img_top    = cv::imread("video4/frame00132.png", cv::IMREAD_COLOR);
+//    cv::Mat3b img_bottom = cv::imread("video4/frame00195.png", cv::IMREAD_COLOR);
     assert(!img_top.empty());
     assert(!img_bottom.empty());
 
