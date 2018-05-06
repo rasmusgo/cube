@@ -12,8 +12,8 @@ extern const cv::Matx<double, 6, 12> camera_space_from_state_space;
 struct LabelObservation
 {
     size_t label_index = 0;
-    ProbabalisticCube::PoseVector information_vector;
-    ProbabalisticCube::PoseMatrix information_matrix;
+    ProbabalisticCube::PoseVector information_vector = {0};
+    ProbabalisticCube::PoseMatrix information_matrix = {0};
     float score = 0;
 };
 
