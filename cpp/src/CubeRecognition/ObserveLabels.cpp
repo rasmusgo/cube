@@ -580,10 +580,10 @@ void showBestLabelObservation(
 
 double logNormPdf(
     const ProbabalisticCube::PoseVector& delta,
-    const ProbabalisticCube::PoseMatrix& JtJ)
+    const ProbabalisticCube::PoseMatrix& icov)
 {
     const double tau = 2.0 * M_PI;
-    return -0.5 * ((delta.t() * JtJ * delta)[0] + std::log(cv::determinant(tau * JtJ.inv())));
+    return -0.5 * ((delta.t() * icov * delta)[0] + std::log(std::abs(tau / cv::determinant(icov))));
 }
 
 // FIXME(Rasmus): Update max_mahalanobis_distance!
