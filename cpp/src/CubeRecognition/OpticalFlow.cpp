@@ -101,7 +101,7 @@ void innerLoop(const cv::Mat3b& a, const cv::Mat3b& b, cv::Mat2f& flow, int i)
             (Jt_2_3 * J_3_2).inv() * -Jt_2_3 * d_3_1 = h_2_1
             - JtJ_2_2.inv() * Jt_2_3 * d_3_1 = h_2_1
             */
-            const float reg = 1.0e-3f;
+            const float reg = 10.0f;
             const cv::Matx22f regularization(
                 reg, 0.0f,
                 0.0f, reg);
