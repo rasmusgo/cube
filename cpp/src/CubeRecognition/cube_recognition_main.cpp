@@ -11,6 +11,7 @@
 #include "FindLabels.hpp"
 #include "Image.hpp"
 #include "ObserveLabels.hpp"
+#include "OpticalFlow.hpp"
 #include "ProbabalisticCube.hpp"
 #include "SolveCamera.hpp"
 #include "Timer.hpp"
@@ -290,6 +291,7 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
     // Start with a single hypotheses of the cube.
     std::vector<ProbabalisticCube> cube_hypotheses;
     cube_hypotheses.push_back(ProbabalisticCube());
+    cv::Mat3b last_frame;
     for (int frame_i = 0;;)
     {
         printf("Frame %i\n", frame_i);
@@ -302,6 +304,16 @@ void analyzeVideo(const std::string& folder, const Camera& calibrated_camera, fl
         {
             break;
         }
+
+        if (!last_frame.empty())
+        {
+            // Compute optical flow.
+            cv::Mat2f flow = intermediateOpticalFlow(last_frame, img);
+            cv::imshow("optical flow", colorizeOpticalFlow(flow));
+        }
+        last_frame = img;
+
+        cv::imshow("image", img);
 
         {
             const size_t num_hypotheses_before = cube_hypotheses.size();

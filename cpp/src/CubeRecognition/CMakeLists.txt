@@ -14,6 +14,8 @@ add_library(CubeRecognitionLib
     MatrixTools.hpp
     ObserveLabels.cpp
     ObserveLabels.hpp
+    OpticalFlow.cpp
+    OpticalFlow.hpp
     ProbabalisticCube.cpp
     ProbabalisticCube.hpp
     Settings.hpp
