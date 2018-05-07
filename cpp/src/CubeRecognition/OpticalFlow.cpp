@@ -111,6 +111,13 @@ void innerLoop(const cv::Mat3b& a, const cv::Mat3b& b, cv::Mat2f& flow, int i)
     }
 
     {
+        char label[] = "intermediate[0]";
+        label[14] = '0' + i;
+        const cv::Mat3b intermediate = (cv::Mat3f(image_from_b) + cv::Mat3f(image_from_a)) * 0.5f;
+        cv::imshow(label, intermediate);
+    }
+
+    {
         char label[] = "delta[0]";
         label[6] = '0' + i;
         cv::imshow(label, 0.5 + delta * 0.01);
