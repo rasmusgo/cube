@@ -38,6 +38,108 @@ cv::Mat2f createAbsoluteMapFromRelative(const cv::Mat2f& offset)
     return mapping;
 }
 
+void innerLoop(const cv::Mat3b& a, const cv::Mat3b& b, cv::Mat2f& flow, int i)
+{
+    // Compute lookup tables
+    const cv::Mat2f map_a_from_mid = createAbsoluteMapFromRelative(-flow);
+    const cv::Mat2f map_b_from_mid = createAbsoluteMapFromRelative(flow);
+
+    // Compute gradients for a
+    cv::Mat3f a_dx;
+    cv::Mat3f a_dy;
+    cv::Sobel(a, a_dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR);
+    cv::Sobel(a, a_dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR);
+
+    // Map image and gradients from image a into intermediate image
+    cv::Mat3f dx_from_a;
+    cv::remap(a_dx, dx_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
+    cv::Mat3f dy_from_a;
+    cv::remap(a_dy, dy_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
+    cv::Mat3b image_from_a;
+    cv::remap(a, image_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
+
+    // Compute gradients for b
+    cv::Mat3f b_dx;
+    cv::Mat3f b_dy;
+    cv::Sobel(b, b_dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR);
+    cv::Sobel(b, b_dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR);
+
+    // Map image and gradients from image b into intermediate image
+    cv::Mat3f dx_from_b;
+    cv::remap(b_dx, dx_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
+    cv::Mat3f dy_from_b;
+    cv::remap(b_dy, dy_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
+    cv::Mat3b image_from_b;
+    cv::remap(b, image_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
+
+    // Estimate flow
+    const cv::Mat3f delta = cv::Mat3f(image_from_b) - cv::Mat3f(image_from_a);
+    const cv::Mat3f delta_dx = cv::Mat3f(dx_from_b) + cv::Mat3f(dx_from_a);
+    const cv::Mat3f delta_dy = cv::Mat3f(dy_from_b) + cv::Mat3f(dy_from_a);
+
+    for (int row = 0; row < delta.rows; ++row)
+    {
+        for (int col = 0; col < delta.cols; ++col)
+        {
+            const auto& d = delta(row, col);
+            const auto& dx = delta_dx(row, col);
+            const auto& dy = delta_dy(row, col);
+
+            const cv::Matx32f J(
+                dx[0], dy[0],
+                dx[1], dy[1],
+                dx[2], dy[2]);
+            /*
+            h_2_1
+            d_3_1
+            dx_3_1
+            dy_3_1
+            J_3_2 = (dx_3_1 | dy_3_1)
+
+            0 = d_3_1 + J_3_2 * h_2_1
+            0 = Jt_2_3 * d_3_1 + Jt_2_3 * J_3_2 * h_2_1
+            (Jt_2_3 * J_3_2).inv() * -Jt_2_3 * d_3_1 = h_2_1
+            - JtJ_2_2.inv() * Jt_2_3 * d_3_1 = h_2_1
+            */
+            const float reg = 1.0e-3f;
+            const cv::Matx22f regularization(
+                reg, 0.0f,
+                0.0f, reg);
+            const cv::Matx22f JtJ = J.t() * J + regularization;
+            flow(row, col) -= (JtJ).inv() * J.t() * d;
+        }
+    }
+
+    {
+        char label[] = "delta[0]";
+        label[6] = '0' + i;
+        cv::imshow(label, 0.5 + delta * 0.01);
+    }
+
+    {
+        char label[] = "delta_dx[0]";
+        label[9] = '0' + i;
+        cv::imshow(label, 0.5 + delta_dx * 0.01);
+    }
+
+    {
+        char label[] = "delta_dy[0]";
+        label[9] = '0' + i;
+        cv::imshow(label, 0.5 + delta_dy * 0.01);
+    }
+
+    {
+        char label[] = "flow_x[0]";
+        label[7] = '0' + i;
+        cv::Mat1f xy[2];
+        cv::split(flow, xy);
+        const float scale = 10.0f / delta.cols;
+        cv::imshow(label, 0.5 + xy[0] * scale);
+        label[5] = 'y';
+        cv::imshow(label, 0.5 + xy[1] * scale);
+    }
+}
+
 cv::Mat2f intermediateOpticalFlow(
     const cv::Mat3b& a,
     const cv::Mat3b& b)
@@ -65,104 +167,9 @@ cv::Mat2f intermediateOpticalFlow(
             cv::pyrUp(flow_pyramid[i + 1], flow_pyramid[i], target_size);
             flow_pyramid[i] *= 2.0f;
         }
-
-        // Compute lookup tables
-        const cv::Mat2f map_a_from_mid = createAbsoluteMapFromRelative(-flow_pyramid[i]);
-        const cv::Mat2f map_b_from_mid = createAbsoluteMapFromRelative(flow_pyramid[i]);
-
-        // Compute gradients for a
-        cv::Mat3f a_dx;
-        cv::Mat3f a_dy;
-        cv::Sobel(a_pyramid[i], a_dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR);
-        cv::Sobel(a_pyramid[i], a_dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR);
-
-        // Map image and gradients from image a into intermediate image
-        cv::Mat3f dx_from_a;
-        cv::remap(a_dx, dx_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
-        cv::Mat3f dy_from_a;
-        cv::remap(a_dy, dy_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
-        cv::Mat3b image_from_a;
-        cv::remap(a_pyramid[i], image_from_a, map_a_from_mid, cv::noArray(), cv::INTER_LINEAR);
-
-        // Compute gradients for b
-        cv::Mat3f b_dx;
-        cv::Mat3f b_dy;
-        cv::Sobel(b_pyramid[i], b_dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR);
-        cv::Sobel(b_pyramid[i], b_dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR);
-
-        // Map image and gradients from image b into intermediate image
-        cv::Mat3f dx_from_b;
-        cv::remap(b_dx, dx_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
-        cv::Mat3f dy_from_b;
-        cv::remap(b_dy, dy_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
-        cv::Mat3b image_from_b;
-        cv::remap(b_pyramid[i], image_from_b, map_b_from_mid, cv::noArray(), cv::INTER_LINEAR);
-
-        // Estimate flow
-        const cv::Mat3f delta = cv::Mat3f(image_from_b) - cv::Mat3f(image_from_a);
-        const cv::Mat3f delta_dx = cv::Mat3f(dx_from_b) + cv::Mat3f(dx_from_a);
-        const cv::Mat3f delta_dy = cv::Mat3f(dy_from_b) + cv::Mat3f(dy_from_a);
-
-        for (int row = 0; row < delta.rows; ++row)
+        for (int j = 0; j < 2; ++j)
         {
-            for (int col = 0; col < delta.cols; ++col)
-            {
-                const auto& d = delta(row, col);
-                const auto& dx = delta_dx(row, col);
-                const auto& dy = delta_dy(row, col);
-
-                const cv::Matx32f J(
-                    dx[0], dy[0],
-                    dx[1], dy[1],
-                    dx[2], dy[2]);
-                /*
-                h_2_1
-                d_3_1
-                dx_3_1
-                dy_3_1
-                J_3_2 = (dx_3_1 | dy_3_1)
-
-                0 = d_3_1 + J_3_2 * h_2_1
-                0 = Jt_2_3 * d_3_1 + Jt_2_3 * J_3_2 * h_2_1
-                (Jt_2_3 * J_3_2).inv() * -Jt_2_3 * d_3_1 = h_2_1
-                - JtJ_2_2.inv() * Jt_2_3 * d_3_1 = h_2_1
-                */
-                const float reg = 1.0e-3f;
-                const cv::Matx22f regularization(
-                    reg, 0.0f,
-                    0.0f, reg);
-                const cv::Matx22f JtJ = J.t() * J + regularization;
-                flow_pyramid[i](row, col) -= (JtJ).inv() * J.t() * d;
-            }
-        }
-
-        {
-            char label[] = "delta[0]";
-            label[6] = '0' + i;
-            cv::imshow(label, 0.5 + delta * 0.01);
-        }
-
-        {
-            char label[] = "delta_dx[0]";
-            label[9] = '0' + i;
-            cv::imshow(label, 0.5 + delta_dx * 0.01);
-        }
-
-        {
-            char label[] = "delta_dy[0]";
-            label[9] = '0' + i;
-            cv::imshow(label, 0.5 + delta_dy * 0.01);
-        }
-
-        {
-            char label[] = "flow_x[0]";
-            label[7] = '0' + i;
-            cv::Mat1f xy[2];
-            cv::split(flow_pyramid[i], xy);
-            const float scale = 10.0f / delta.cols;
-            cv::imshow(label, 0.5 + xy[0] * scale);
-            label[5] = 'y';
-            cv::imshow(label, 0.5 + xy[1] * scale);
+            innerLoop(a_pyramid[i], b_pyramid[i], flow_pyramid[i], i);
         }
     }
     return flow_pyramid[0];
