@@ -69,7 +69,7 @@ std::array<FeatureMat, NUM_LEVELS> createPyramid(const cv::Mat3b& image)
     return pyramid;
 }
 
-cv::Mat3f mat3fFromFeatureVec(const FeatureMat& image)
+cv::Mat3f colorFromFeatureVec(const FeatureMat& image)
 {
     std::vector<cv::Mat> channels;
     cv::split(image, channels);
@@ -171,27 +171,27 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
         char label[] = "intermediate[0]";
         label[13] = '0' + i;
         const cv::Mat3f intermediate = (
-            mat3fFromFeatureVec(image_from_b) +
-            mat3fFromFeatureVec(image_from_a)) * 0.5f;
+            colorFromFeatureVec(image_from_b) +
+            colorFromFeatureVec(image_from_a)) * 0.5f;
         cv::imshow(label, intermediate);
     }
 
     {
         char label[] = "delta[0]";
         label[6] = '0' + i;
-        cv::imshow(label, 0.5f + mat3fFromFeatureVec(delta) * 0.5f);
+        cv::imshow(label, 0.5f + colorFromFeatureVec(delta) * 0.5f);
     }
 
     {
         char label[] = "delta_dx[0]";
         label[9] = '0' + i;
-        cv::imshow(label, 0.5f + mat3fFromFeatureVec(delta_dx) * 0.2f);
+        cv::imshow(label, 0.5f + colorFromFeatureVec(delta_dx) * 0.2f);
     }
 
     {
         char label[] = "delta_dy[0]";
         label[9] = '0' + i;
-        cv::imshow(label, 0.5f + mat3fFromFeatureVec(delta_dy) * 0.2f);
+        cv::imshow(label, 0.5f + colorFromFeatureVec(delta_dy) * 0.2f);
     }
 
     {
