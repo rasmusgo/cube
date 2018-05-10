@@ -5,6 +5,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "Timer.hpp"
+
 namespace {
 
 const size_t NUM_INNER_ITERATIONS = 2;
@@ -213,12 +215,14 @@ cv::Mat2f intermediateOpticalFlow(
     assert(a.cols == b.cols);
     assert(a.rows == b.rows);
 
+    startTimer();
     const auto a_pyramid = createPyramid(a);
     const auto b_pyramid = createPyramid(b);
+    stopTimer("creating pyramids");
 
-    std::array<cv::Mat2f, NUM_LEVELS> flow_pyramid;
-
+    startTimer();
     // Compute flow starting from the smallest images in the pyramid.
+    std::array<cv::Mat2f, NUM_LEVELS> flow_pyramid;
     for (int i = MAX_LEVEL; i >= MIN_LEVEL; --i)
     {
         const cv::Size target_size = a_pyramid[i].size();
@@ -236,6 +240,8 @@ cv::Mat2f intermediateOpticalFlow(
             innerLoop(a_pyramid[i], b_pyramid[i], flow_pyramid[i], i);
         }
     }
+    stopTimer("computing flow");
+
     return flow_pyramid[MIN_LEVEL];
 }
 
