@@ -7,8 +7,10 @@
 
 namespace {
 
-const size_t NUM_LEVELS = 5;
-const size_t MAX_LEVEL = NUM_LEVELS - 1;
+const size_t NUM_INNER_ITERATIONS = 2;
+const size_t MIN_LEVEL = 1;
+const size_t MAX_LEVEL = 4;
+const size_t NUM_LEVELS = MAX_LEVEL + 1;
 const float INVERSE_SOBEL_SCALE_FACTOR = 1.0f / 8.0f;
 
 const size_t NUM_FEATURE_DIMENSIONS = 8;
@@ -217,7 +219,7 @@ cv::Mat2f intermediateOpticalFlow(
     std::array<cv::Mat2f, NUM_LEVELS> flow_pyramid;
 
     // Compute flow starting from the smallest images in the pyramid.
-    for (int i = MAX_LEVEL; i >= 0; --i)
+    for (int i = MAX_LEVEL; i >= MIN_LEVEL; --i)
     {
         const cv::Size target_size = a_pyramid[i].size();
         if (i == MAX_LEVEL)
@@ -229,12 +231,12 @@ cv::Mat2f intermediateOpticalFlow(
             cv::pyrUp(flow_pyramid[i + 1], flow_pyramid[i], target_size);
             flow_pyramid[i] *= 2.0f;
         }
-        for (int j = 0; j < 2; ++j)
+        for (int j = 0; j < NUM_INNER_ITERATIONS; ++j)
         {
             innerLoop(a_pyramid[i], b_pyramid[i], flow_pyramid[i], i);
         }
     }
-    return flow_pyramid[0];
+    return flow_pyramid[MIN_LEVEL];
 }
 
 cv::Mat3f colorizeOpticalFlow(const cv::Mat2f& flow)
