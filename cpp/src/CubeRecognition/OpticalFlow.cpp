@@ -141,12 +141,6 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
             const auto& dx = delta_dx(row, col);
             const auto& dy = delta_dy(row, col);
 
-            cv::Matx<float, NUM_FEATURE_DIMENSIONS, 2> J;
-            for (int i = 0; i < NUM_FEATURE_DIMENSIONS; ++i)
-            {
-                J(i, 0) = dx[i];
-                J(i, 1) = dy[i];
-            }
             /*
             h_2_1
             d_3_1
@@ -159,13 +153,21 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
             (Jt_2_3 * J_3_2).inv() * -Jt_2_3 * d_3_1 = h_2_1
             - JtJ_2_2.inv() * Jt_2_3 * d_3_1 = h_2_1
             */
-            const float reg = 0.01f;
-            const cv::Matx22f regularization(
-                reg, 0.0f,
-                0.0f, reg);
-            const cv::Matx22f JtJ = J.t() * J + regularization;
+            const float dxdx = dx.dot(dx);
+            const float dxdy = dx.dot(dy);
+            const float dydy = dy.dot(dy);
+            const float regularization = 0.01f;
+
+            const cv::Matx22f JtJ(
+                dxdx + regularization, dxdy,
+                dxdy, dydy + regularization);
             const cv::Matx22f JtJinv = JtJ.inv();
-            flow(row, col) -= JtJinv * J.t() * d;
+
+            const cv::Vec2f Jtd(
+                dx.dot(d),
+                dy.dot(d));
+
+            flow(row, col) -= JtJinv * Jtd;
             uncertainty(row, col) = std::sqrt(JtJinv(0,0) + JtJinv(1,1));
         }
     }
