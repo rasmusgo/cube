@@ -79,6 +79,34 @@ cv::Mat3f colorFromFeatureVec(const FeatureMat& image)
     return out;
 }
 
+cv::Mat3f part2FromFeatureVec(const FeatureMat& image)
+{
+    std::vector<cv::Mat> channels;
+    cv::split(image, channels);
+    channels = {
+        channels.at(4),
+        channels.at(4),
+        channels.at(3),
+    };
+    cv::Mat3f out;
+    cv::merge(channels, out);
+    return out;
+}
+
+cv::Mat3f part3FromFeatureVec(const FeatureMat& image)
+{
+    std::vector<cv::Mat> channels;
+    cv::split(image, channels);
+    channels = {
+        channels.at(5),
+        channels.at(6),
+        channels.at(7),
+    };
+    cv::Mat3f out;
+    cv::merge(channels, out);
+    return out;
+}
+
 cv::Mat2f createAbsoluteMapFromRelative(const cv::Mat2f& offset)
 {
     cv::Mat2f mapping(offset.size());
@@ -184,19 +212,39 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     }
     flow -= flow_update;
 
+    const FeatureMat intermediate = (image_from_b + image_from_a) * 0.5f;
     {
-        char label[] = "intermediate[0]";
+        char label[] = "intermediate[0] color";
         label[13] = '0' + i;
-        const cv::Mat3f intermediate = (
-            colorFromFeatureVec(image_from_b) +
-            colorFromFeatureVec(image_from_a)) * 0.5f;
-        cv::imshow(label, intermediate);
+        cv::imshow(label, colorFromFeatureVec(intermediate));
+    }
+    {
+        char label[] = "intermediate[0] part2";
+        label[13] = '0' + i;
+        cv::imshow(label, 0.5f + part2FromFeatureVec(intermediate) * 0.5f);
+    }
+    {
+        char label[] = "intermediate[0] part3";
+        label[13] = '0' + i;
+        cv::imshow(label, 0.5f + part3FromFeatureVec(intermediate) * 0.5f);
     }
 
     {
-        char label[] = "delta[0]";
+        char label[] = "delta[0] color";
         label[6] = '0' + i;
         cv::imshow(label, 0.5f + colorFromFeatureVec(delta) * 0.5f);
+    }
+
+    {
+        char label[] = "delta[0] part2";
+        label[6] = '0' + i;
+        cv::imshow(label, 0.5f + part2FromFeatureVec(delta) * 0.5f);
+    }
+
+    {
+        char label[] = "delta[0] part3";
+        label[6] = '0' + i;
+        cv::imshow(label, 0.5f + part3FromFeatureVec(delta) * 0.5f);
     }
 
     {
