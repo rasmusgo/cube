@@ -132,6 +132,7 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     const FeatureMat delta_dx = FeatureMat(dx_from_b) + FeatureMat(dx_from_a);
     const FeatureMat delta_dy = FeatureMat(dy_from_b) + FeatureMat(dy_from_a);
 
+    cv::Mat1f uncertainty(delta.size());
     for (int row = 0; row < delta.rows; ++row)
     {
         for (int col = 0; col < delta.cols; ++col)
@@ -163,7 +164,9 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
                 reg, 0.0f,
                 0.0f, reg);
             const cv::Matx22f JtJ = J.t() * J + regularization;
-            flow(row, col) -= (JtJ).inv() * J.t() * d;
+            const cv::Matx22f JtJinv = JtJ.inv();
+            flow(row, col) -= JtJinv * J.t() * d;
+            uncertainty(row, col) = std::sqrt(JtJinv(0,0) + JtJinv(1,1));
         }
     }
 
@@ -203,6 +206,12 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
         cv::imshow(label, 0.5 + xy[0] * scale);
         label[5] = 'y';
         cv::imshow(label, 0.5 + xy[1] * scale);
+    }
+
+    {
+        char label[] = "uncertainty[0]";
+        label[12] = '0' + i;
+        cv::imshow(label, uncertainty * 0.1f);
     }
 }
 
