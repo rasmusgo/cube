@@ -2,3 +2,4 @@
 
 void startTimer();
 void stopTimer();
+void stopTimer(const char name[]);
