@@ -38,13 +38,13 @@ std::array<FeatureMat, NUM_LEVELS> createPyramid(const cv::Mat3b& image)
     cv::Sobel(image_gray, dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR * DERIVATIVES_WEIGHT);
 
     // Then the structure tensor.
-    const cv::Size kernel_size(3,3);
+    const cv::Size kernel_size(5, 5);
     cv::Mat1f sxx = dx.mul(dx);
     cv::Mat1f sxy = dx.mul(dy);
     cv::Mat1f syy = dy.mul(dy);
-    cv::blur(sxx, sxx, kernel_size);
-    cv::blur(sxy, sxy, kernel_size);
-    cv::blur(syy, syy, kernel_size);
+    cv::GaussianBlur(sxx, sxx, kernel_size, 0.0);
+    cv::GaussianBlur(sxy, sxy, kernel_size, 0.0);
+    cv::GaussianBlur(syy, syy, kernel_size, 0.0);
 
     // Merge the channels to form the image of feature vectors.
     const std::vector<cv::Mat> image_array = {
