@@ -169,7 +169,7 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
 
     {
         char label[] = "intermediate[0]";
-        label[14] = '0' + i;
+        label[13] = '0' + i;
         const cv::Mat3f intermediate = (
             mat3fFromFeatureVec(image_from_b) +
             mat3fFromFeatureVec(image_from_a)) * 0.5f;
