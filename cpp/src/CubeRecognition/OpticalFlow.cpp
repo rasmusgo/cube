@@ -132,6 +132,15 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     const FeatureMat delta_dx = FeatureMat(dx_from_b) + FeatureMat(dx_from_a);
     const FeatureMat delta_dy = FeatureMat(dy_from_b) + FeatureMat(dy_from_a);
 
+    // Compute gradients for flow regularization
+    const float regularization_towards_zero = 0.01f;
+    const float regularization_towards_smooth = 0.1f;
+    cv::Mat2f flow_dx;
+    cv::Mat2f flow_dy;
+    cv::Sobel(flow, flow_dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR);
+    cv::Sobel(flow, flow_dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR);
+
+    cv::Mat2f flow_update(delta.size());
     cv::Mat1f uncertainty(delta.size());
     for (int row = 0; row < delta.rows; ++row)
     {
@@ -156,21 +165,24 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
             const float dxdx = dx.dot(dx);
             const float dxdy = dx.dot(dy);
             const float dydy = dy.dot(dy);
-            const float regularization = 0.01f;
 
+            const float regularization =
+                regularization_towards_zero + 2 * regularization_towards_smooth;
             const cv::Matx22f JtJ(
                 dxdx + regularization, dxdy,
                 dxdy, dydy + regularization);
             const cv::Matx22f JtJinv = JtJ.inv();
 
-            const cv::Vec2f Jtd(
-                dx.dot(d),
-                dy.dot(d));
+            const cv::Vec2f Jtd = cv::Vec2f(dx.dot(d), dy.dot(d))
+                + regularization_towards_zero * flow(row, col)
+                + regularization_towards_smooth * flow_dx(row, col)
+                + regularization_towards_smooth * flow_dy(row, col);
 
-            flow(row, col) -= JtJinv * Jtd;
+            flow_update(row, col) = JtJinv * Jtd;
             uncertainty(row, col) = std::sqrt(JtJinv(0,0) + JtJinv(1,1));
         }
     }
+    flow -= flow_update;
 
     {
         char label[] = "intermediate[0]";
