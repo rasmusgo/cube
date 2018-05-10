@@ -161,7 +161,8 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     const FeatureMat delta_dy = FeatureMat(dy_from_b) + FeatureMat(dy_from_a);
 
     // Compute gradients for flow regularization
-    const float regularization_towards_zero = 0.01f;
+    const float regularization_towards_zero = 0.001f;
+    const float regularization_towards_same = 0.01f;
     const float regularization_towards_smooth = 0.1f;
     cv::Mat2f flow_dx;
     cv::Mat2f flow_dy;
@@ -195,7 +196,9 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
             const float dydy = dy.dot(dy);
 
             const float regularization =
-                regularization_towards_zero + 2 * regularization_towards_smooth;
+                regularization_towards_zero +
+                regularization_towards_same +
+                2 * regularization_towards_smooth;
             const cv::Matx22f JtJ(
                 dxdx + regularization, dxdy,
                 dxdy, dydy + regularization);
