@@ -246,7 +246,7 @@ cv::Mat2f intermediateOpticalFlow(
     startTimer();
     // Compute flow starting from the smallest images in the pyramid.
     std::array<cv::Mat2f, NUM_LEVELS> flow_pyramid;
-    for (int i = MAX_LEVEL; i >= MIN_LEVEL; --i)
+    for (int i = MAX_LEVEL; i >= int(MIN_LEVEL); --i)
     {
         const cv::Size target_size = a_pyramid[i].size();
         if (i == MAX_LEVEL)
