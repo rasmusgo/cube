@@ -15,10 +15,9 @@ const size_t MAX_LEVEL = 4;
 const size_t NUM_LEVELS = MAX_LEVEL + 1;
 const float INVERSE_SOBEL_SCALE_FACTOR = 1.0f / 8.0f;
 
-const size_t NUM_FEATURE_DIMENSIONS = 8;
+const size_t NUM_FEATURE_DIMENSIONS = 9;
 using FeatureVec = cv::Vec<float, NUM_FEATURE_DIMENSIONS>;
 using FeatureMat = cv::Mat_<FeatureVec>;
-const float DERIVATIVES_WEIGHT = 10.0f;
 
 } // namespace
 
@@ -29,28 +28,25 @@ std::array<FeatureMat, NUM_LEVELS> createPyramid(const cv::Mat3b& image)
     // The first three channels are the color image.
     const cv::Mat3f image_float = cv::Mat3f(image) * (1.0f / 255.0f);
 
-    // Then the derivatives of intensity.
-    cv::Mat1f image_gray;
-    cv::cvtColor(image_float, image_gray, CV_BGR2GRAY);
-    cv::Mat1f dx;
-    cv::Mat1f dy;
-    cv::Sobel(image_gray, dx, CV_32F, 1, 0, 3, INVERSE_SOBEL_SCALE_FACTOR * DERIVATIVES_WEIGHT);
-    cv::Sobel(image_gray, dy, CV_32F, 0, 1, 3, INVERSE_SOBEL_SCALE_FACTOR * DERIVATIVES_WEIGHT);
-
-    // Then the structure tensor.
-    const cv::Size kernel_size(5, 5);
-    cv::Mat1f sxx = dx.mul(dx);
-    cv::Mat1f sxy = dx.mul(dy);
-    cv::Mat1f syy = dy.mul(dy);
-    cv::GaussianBlur(sxx, sxx, kernel_size, 0.0);
-    cv::GaussianBlur(sxy, sxy, kernel_size, 0.0);
-    cv::GaussianBlur(syy, syy, kernel_size, 0.0);
+    // Three levels of difference of Gaussians
+    cv::Mat3f image_g1;
+    cv::Mat3f image_g2;
+    cv::Mat3f image_g3;
+    cv::Mat3f image_g4;
+    const cv::Size kernel_size_g1(3, 3);
+    const cv::Size kernel_size_g2(13, 13);
+    const cv::Size kernel_size_g3(35, 35);
+    const cv::Size kernel_size_g4(101, 101);
+    cv::GaussianBlur(image_float, image_g1, kernel_size_g1, 0.0);
+    cv::GaussianBlur(image_float, image_g2, kernel_size_g2, 0.0);
+    cv::GaussianBlur(image_float, image_g3, kernel_size_g3, 0.0);
+    cv::GaussianBlur(image_float, image_g4, kernel_size_g4, 0.0);
 
     // Merge the channels to form the image of feature vectors.
     const std::vector<cv::Mat> image_array = {
-        image_float,
-        dx, dy,
-        sxx, sxy, syy,
+        image_g1 - image_g2,
+        image_g2 - image_g3,
+        image_g3 - image_g4,
     };
     std::vector<int> from_to;
     for (int i = 0; i < NUM_FEATURE_DIMENSIONS; ++i)
@@ -69,7 +65,7 @@ std::array<FeatureMat, NUM_LEVELS> createPyramid(const cv::Mat3b& image)
     return pyramid;
 }
 
-cv::Mat3f colorFromFeatureVec(const FeatureMat& image)
+cv::Mat3f part1FromFeatureVec(const FeatureMat& image)
 {
     std::vector<cv::Mat> channels;
     cv::split(image, channels);
@@ -84,9 +80,9 @@ cv::Mat3f part2FromFeatureVec(const FeatureMat& image)
     std::vector<cv::Mat> channels;
     cv::split(image, channels);
     channels = {
-        channels.at(4),
-        channels.at(4),
         channels.at(3),
+        channels.at(4),
+        channels.at(5),
     };
     cv::Mat3f out;
     cv::merge(channels, out);
@@ -98,9 +94,9 @@ cv::Mat3f part3FromFeatureVec(const FeatureMat& image)
     std::vector<cv::Mat> channels;
     cv::split(image, channels);
     channels = {
-        channels.at(5),
         channels.at(6),
         channels.at(7),
+        channels.at(8),
     };
     cv::Mat3f out;
     cv::merge(channels, out);
@@ -217,9 +213,9 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
 
     const FeatureMat intermediate = (image_from_b + image_from_a) * 0.5f;
     {
-        char label[] = "intermediate[0] color";
+        char label[] = "intermediate[0] part1";
         label[13] = '0' + i;
-        cv::imshow(label, colorFromFeatureVec(intermediate));
+        cv::imshow(label, 0.5f + part1FromFeatureVec(intermediate) * 0.5f);
     }
     {
         char label[] = "intermediate[0] part2";
@@ -233,9 +229,9 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     }
 
     {
-        char label[] = "delta[0] color";
+        char label[] = "delta[0] part1";
         label[6] = '0' + i;
-        cv::imshow(label, 0.5f + colorFromFeatureVec(delta) * 0.5f);
+        cv::imshow(label, 0.5f + part1FromFeatureVec(delta) * 0.5f);
     }
 
     {
@@ -253,24 +249,24 @@ void innerLoop(const FeatureMat& a, const FeatureMat& b, cv::Mat2f& flow, int i)
     {
         char label[] = "delta_dx[0]";
         label[9] = '0' + i;
-        cv::imshow(label, 0.5f + colorFromFeatureVec(delta_dx) * 0.2f);
+        cv::imshow(label, 0.5f + part1FromFeatureVec(delta_dx) * 0.2f);
     }
 
     {
         char label[] = "delta_dy[0]";
         label[9] = '0' + i;
-        cv::imshow(label, 0.5f + colorFromFeatureVec(delta_dy) * 0.2f);
+        cv::imshow(label, 0.5f + part1FromFeatureVec(delta_dy) * 0.2f);
     }
 
     {
-        char label[] = "flow_x[0]";
-        label[7] = '0' + i;
+        char label[] = "flow[0]";
+        label[5] = '0' + i;
         cv::Mat1f xy[2];
         cv::split(flow, xy);
-        const float scale = 10.0f / delta.cols;
-        cv::imshow(label, 0.5 + xy[0] * scale);
-        label[5] = 'y';
-        cv::imshow(label, 0.5 + xy[1] * scale);
+        cv::Mat3f xyy;
+        cv::merge(std::vector<cv::Mat>{xy[0], xy[1], xy[1]}, xyy);
+        const float scale = 20.0f / delta.cols;
+        cv::imshow(label, 0.5 + xyy * scale);
     }
 
     {
