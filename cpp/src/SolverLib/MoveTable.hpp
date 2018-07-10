@@ -2,8 +2,13 @@
 
 #include "FaceCube.hpp"
 
+#include <array>
 #include <map>
 #include <string>
+
+const size_t SYMBOL_SIZE = 4;
+
+using MoveSymbol = std::array<std::string, SYMBOL_SIZE>;
 
 class MoveTable
 {
@@ -36,5 +41,6 @@ private:
     static void init();
 public:
     static const TableEntry& getMove(std::string mv);
+    static const MoveSymbol getMoveSymbol(std::string mv);
     static void move(twophase::FaceCube &fc, std::string mv);
 };

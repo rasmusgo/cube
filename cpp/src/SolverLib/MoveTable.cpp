@@ -1,6 +1,7 @@
 #include "MoveTable.hpp"
 #include "FaceCube.hpp"
 
+#include <array>
 #include <string>
 
 std::map<std::string, MoveTable::TableEntry> MoveTable::table;
@@ -54,7 +55,7 @@ void MoveTable::init() {
 
 const MoveTable::TableEntry& MoveTable::getMove(std::string mv) {
     init();
-    typeof(table.end()) it = table.find(mv);
+    const auto it = table.find(mv);
     if (it != table.end())
         return it->second;
 
@@ -62,6 +63,74 @@ const MoveTable::TableEntry& MoveTable::getMove(std::string mv) {
     fflush(stderr);
     static const TableEntry e;
     return e;
+}
+
+const MoveSymbol MoveTable::getMoveSymbol(std::string mv) {
+    init();
+    std::string line_name = "       ";
+    const size_t start = mv.size() >= line_name.size() ? 0 :
+        line_name.size() / 2 - mv.size() / 2;
+    for (size_t i = 0; i < mv.size() && i < line_name.size(); ++i) {
+        line_name[start + i] = mv[i];
+    }
+
+    const auto it = table.find(mv);
+    if (it != table.end()) {
+        const TableEntry& move = it->second;
+        if (move.axis == 1) {
+            const std::array<std::string, 5> upper = {
+                "╷ ", "╷ ", "╷ ", "▲ ", "▲ ",
+            };
+            const std::array<std::string, 5> middl = {
+                "▼ ", "│ ", "│ ", "│ ", "▲ ",
+            };
+            const std::array<std::string, 5> lower = {
+                "▼ ", "▼ ", "╵ ", "╵ ", "╵ ",
+            };
+            return MoveSymbol{
+                " " + upper[move.c + 2] + upper[move.b + 2] + upper[move.a + 2],
+                " " + middl[move.c + 2] + middl[move.b + 2] + middl[move.a + 2],
+                " " + lower[move.c + 2] + lower[move.b + 2] + lower[move.a + 2],
+                line_name,
+            };
+        } else if (move.axis == 0) {
+            const std::array<std::string, 5> line_graphics{
+                " ╶──▶▶ ",
+                " ╶───▶ ",
+                " ╶───╴ ",
+                " ◀───╴ ",
+                " ◀◀──╴ ",
+            };
+            return MoveSymbol{
+                line_graphics[move.a + 2],
+                line_graphics[move.b + 2],
+                line_graphics[move.c + 2],
+                line_name,
+            };
+        } else {
+            const std::array<std::string, 5> line_graphics{
+                " ◣◆──╮ ",
+                " ◣───╮ ",
+                " ╭───╮ ",
+                " ╭───◢ ",
+                " ╭──◆◢ ",
+            };
+            return MoveSymbol{
+                line_graphics[move.c + 2],
+                line_graphics[move.b + 2],
+                line_graphics[move.a + 2],
+                line_name,
+            };
+        }
+    }
+    fprintf(stderr, "%s: %s(%d): Unknown move: %s\n", __FILE__, __FUNCTION__, __LINE__, mv.c_str());
+    fflush(stderr);
+    return MoveSymbol{
+        " ╭───╮ ",
+        " │ ? │ ",
+        " ╰───╯ ",
+        line_name,
+    };
 }
 
 void MoveTable::move(twophase::FaceCube &fc, std::string mv) {
