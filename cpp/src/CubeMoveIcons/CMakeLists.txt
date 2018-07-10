@@ -5,3 +5,7 @@ add_executable(GenerateMoveIcons
 target_link_libraries(GenerateMoveIcons
     ${OpenCV_LIBS}
 )
+
+add_executable(letters2arrows
+    letters2arrows.cpp
+)
